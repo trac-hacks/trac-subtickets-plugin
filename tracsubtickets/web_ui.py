@@ -115,8 +115,13 @@ class SubTicketsModule(Component):
         return children
 
     def validate_ticket(self, req, ticket):
+        validate = True
+        for option in self.config.options('tracsubtickets'):
+            if option[0] == 'validate':
+                validate = self.config.getbool('tracsubtickets', 'validate', True)
+
         action = req.args.get('action')
-        if action == 'resolve':
+        if action == 'resolve' and validate:
             db = self.env.get_db_cnx()
             cursor = db.cursor()
             cursor.execute("SELECT parent, child FROM subtickets WHERE parent=%s",
@@ -126,7 +131,7 @@ class SubTicketsModule(Component):
                 if Ticket(self.env, child)['status'] != 'closed':
                     yield None, _('Child ticket #%s has not been closed yet') % child
 
-        elif action == 'reopen':
+        elif action == 'reopen' and validate:
             ids = set(NUMBERS_RE.findall(ticket['parents'] or ''))
             for id in ids:
                 if Ticket(self.env, id)['status'] == 'closed':
