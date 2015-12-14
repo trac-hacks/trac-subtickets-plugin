@@ -134,6 +134,10 @@ class SubTicketsModule(Component):
 
     # ITemplateStreamFilter method
     def filter_stream(self, req, method, filename, stream, data):
+        recursion = False
+        for option in self.config.options('tracsubtickets'):
+            if option[0] == 'recursion':
+                recursion = self.config.getbool('tracsubtickets', 'recursion', False)
         if req.path_info.startswith('/ticket/'):
             div = None
             if 'ticket' in data:
@@ -177,9 +181,13 @@ class SubTicketsModule(Component):
                         owner = tag.td(tag.a(ticket['owner'], href=href))
 
                         tbody.append(tag.tr(summary, type, status, owner))
-                        _func(children[id], depth + 1)
+                        if depth >= 0: 
+                            _func(children[id], depth + 1)
 
-                _func(data['subtickets'])
+                if recursion:
+                    _func(data['subtickets'])
+                else:
+                    _func(data['subtickets'],-1)
 
             if div:
                 add_stylesheet(req, 'subtickets/css/subtickets.css')
