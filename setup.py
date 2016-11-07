@@ -50,7 +50,6 @@ setup(
     """,
     license = 'BSD',
 
-    install_requires = ['Trac >= 0.12dev'],
 
     packages = find_packages(exclude=['*.tests*']),
     package_data = {
