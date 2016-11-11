@@ -141,42 +141,75 @@ class SubTicketsModule(Component):
                 ticket = data['ticket']
                 # title
                 div = tag.div(class_='description')
-                if ticket['status'] != 'closed':
-                    link = tag.a(_('add'),
-                        href=req.href.newticket(parents=ticket.id),
-                        title=_('Create new child ticket'))
-                    link = tag.span('(', link, ')', class_='addsubticket')
+                add_style = self.config.get('subtickets', 'add_style', default='link')
+                inherit_fields = self.config.getlist('subtickets','%s.child_inherits' % ticket['type'])
+                if 'TICKET_CREATE' in req.perm(ticket.resource) and ticket['status'] != 'closed':
+                    if add_style == 'link':
+                        inh  = {f: ticket[f] for f in inherit_fields}
+                        link = tag.a('add', 
+                                     href=req.href.newticket(parents=ticket.id, *inh))
+                        link = tag.span('(', link, ')', class_='addsubticket')
+                        button = None
+                    else:
+                        inh = [tag.input(type  = 'hidden', 
+                                         name  = f, 
+                                         value = ticket[f]) for f in inherit_fields]
+
+                        link = None
+                        button = tag.form(tag.div(tag.input(type="submit", 
+                                                            value="Create", 
+                                                            title="Create a child ticket"),
+                                                  inh,
+                                                  tag.input(type="hidden", 
+                                                            name="parents", 
+                                                            value=str(ticket.id)),
+                                                  class_="inlinebuttons"),
+                                          method="get", action=req.href.newticket())
                 else:
                     link = None
+                    button = None
+                div.append(button)
                 div.append(tag.h3(_('Subtickets '), link))
 
             if 'subtickets' in data:
                 # table
                 tbody = tag.tbody()
                 div.append(tag.table(tbody, class_='subtickets'))
-
+                columns = self.config.getlist('subtickets', 
+                                              '%s.table_columns' % ticket['type'], 
+                                              default=['status','owner'])
+                owner_url = self.config.get('subtickets', 'owner_url')
                 # tickets
                 def _func(children, depth=0):
                     for id in sorted(children, key=lambda x: int(x)):
                         ticket = Ticket(self.env, id)
 
-                        # 1st column
+                        # the row
+                        r = []
+                        # Always show ID and summary
                         attrs = {'href': req.href.ticket(id)}
                         if ticket['status'] == 'closed':
                             attrs['class_'] = 'closed'
                         link = tag.a('#%s' % id, **attrs)
                         summary = tag.td(link, ': %s' % ticket['summary'],
                             style='padding-left: %dpx;' % (depth * 15))
-                        # 2nd column
-                        type = tag.td(ticket['type'])
-                        # 3rd column
-                        status = tag.td(ticket['status'])
-                        # 4th column
-                        href = req.href.query(status='!closed',
-                                              owner=ticket['owner'])
-                        owner = tag.td(tag.a(ticket['owner'], href=href))
+                        r.append(summary)
 
-                        tbody.append(tag.tr(summary, type, status, owner))
+                        # Add other columns as configured.
+                        for column in columns:
+                            if column == 'owner':
+                                if owner_url:
+                                    href = req.href(owner_url % ticket['owner'])
+                                else:
+                                    href = req.href.query(status='!closed',
+                                                          owner=ticket['owner'])
+                                e = tag.td(tag.a(ticket['owner'], href=href))
+                            else:
+                                e = tag.td(ticket[column])
+
+                            r.append(e)
+
+                        tbody.append(tag.tr(*r))
                         _func(children[id], depth + 1)
 
                 _func(data['subtickets'])
