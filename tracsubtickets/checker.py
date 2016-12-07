@@ -34,8 +34,7 @@ from trac.env import open_environment
 from api import NUMBERS_RE
 
 
-def check_subtickets(env):
-    db = env.get_db_cnx()
+def check_subtickets(db):
     cursor = db.cursor()
 
     cfield = {}
@@ -89,7 +88,8 @@ def main(args=sys.argv[1:]):
 
     # check all the environments
     for env in envs:
-        check_subtickets(env)
+        with env.db_transaction as db:
+            check_subtickets(db)
 
 
 if __name__ == '__main__':

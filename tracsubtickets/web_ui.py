@@ -70,7 +70,9 @@ class SubTicketsModule(Component):
                 if len(parents) > 0:
                     self._append_parent_links(req, data, ids)
     
-                children = self.get_children(ticket.id)
+                with self.env.db_transaction as db:
+                    children = self.get_children(ticket.id, db)
+
                 if children:
                     data['subtickets'] = children
 
@@ -98,10 +100,8 @@ class SubTicketsModule(Component):
     def prepare_ticket(self, req, ticket, fields, actions):
         pass
 
-    def get_children(self, parent_id, db=None):
+    def get_children(self, parent_id, db):
         children = {}
-        if not db:
-            db = self.env.get_db_cnx()
         cursor = db.cursor()
         cursor.execute("SELECT parent, child FROM subtickets WHERE parent=%s",
                        (parent_id, ))
@@ -117,14 +117,14 @@ class SubTicketsModule(Component):
     def validate_ticket(self, req, ticket):
         action = req.args.get('action')
         if action == 'resolve':
-            db = self.env.get_db_cnx()
-            cursor = db.cursor()
-            cursor.execute("SELECT parent, child FROM subtickets WHERE parent=%s",
-                           (ticket.id, ))
+            with self.env.db_transaction as db:
+                cursor = db.cursor()
+                cursor.execute("SELECT parent, child FROM subtickets WHERE parent=%s",
+                               (ticket.id, ))
 
-            for parent, child in cursor:
-                if Ticket(self.env, child)['status'] != 'closed':
-                    yield None, _('Child ticket #%s has not been closed yet') % child
+                for parent, child in cursor:
+                    if Ticket(self.env, child)['status'] != 'closed':
+                        yield None, _('Child ticket #%s has not been closed yet') % child
 
         elif action == 'reopen':
             ids = set(NUMBERS_RE.findall(ticket['parents'] or ''))
