@@ -70,8 +70,7 @@ class SubTicketsModule(Component):
                 if len(parents) > 0:
                     self._append_parent_links(req, data, ids)
     
-                with self.env.db_transaction as db:
-                    children = self.get_children(ticket.id, db)
+                children = self.get_children(ticket.id)
 
                 if children:
                     data['subtickets'] = children
@@ -100,37 +99,40 @@ class SubTicketsModule(Component):
     def prepare_ticket(self, req, ticket, fields, actions):
         pass
 
-    def get_children(self, parent_id, db):
-        children = {}
-        cursor = db.cursor()
-        cursor.execute("SELECT parent, child FROM subtickets WHERE parent=%s",
-                       (parent_id, ))
+    def get_children(self, parent_id):
+        with self.env.db_query as db:
+            children = {}
+            cursor = db.cursor()
+            cursor.execute("""
+                SELECT parent, child FROM subtickets WHERE parent=%s
+                """, (parent_id, ))
 
-        for parent, child in cursor:
-            children[child] = None
+            for parent, child in cursor:
+                children[child] = None
 
-        for id in children:
-            children[id] = self.get_children(id, db)
+            for id in children:
+                children[id] = self.get_children(id)
 
-        return children
+            return children
 
     def validate_ticket(self, req, ticket):
         action = req.args.get('action')
         if action == 'resolve':
-            with self.env.db_transaction as db:
+            with self.env.db_query as db:
                 cursor = db.cursor()
-                cursor.execute("SELECT parent, child FROM subtickets WHERE parent=%s",
-                               (ticket.id, ))
+                cursor.execute("""
+                    SELECT parent, child FROM subtickets WHERE parent=%s
+                    """, (ticket.id, ))
 
                 for parent, child in cursor:
                     if Ticket(self.env, child)['status'] != 'closed':
-                        yield None, _('Child ticket #%s has not been closed yet') % child
+                        yield None, _("Cannot close/resolve because child ticket #%(child)s is still open", child=child)
 
         elif action == 'reopen':
             ids = set(NUMBERS_RE.findall(ticket['parents'] or ''))
             for id in ids:
                 if Ticket(self.env, id)['status'] == 'closed':
-                    yield None, _('Parent ticket #%s is closed') % id
+                    yield None, _("Cannot reopen because parent ticket #%(id)s is closed", id=id)
 
     # ITemplateStreamFilter method
     def filter_stream(self, req, method, filename, stream, data):
