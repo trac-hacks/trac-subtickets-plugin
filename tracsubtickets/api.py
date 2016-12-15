@@ -69,12 +69,13 @@ class SubTicketsSystem(Component):
     # IEnvironmentSetupParticipant methods
     def environment_created(self):
         self.found_db_version = 0
-        self.upgrade_environment(self.env.get_db_cnx())
+        self.upgrade_environment()
 
     def environment_needs_upgrade(self, db):
         cursor = db.cursor()
-        cursor.execute("SELECT value FROM system WHERE name=%s",
-                       (db_default.name, ))
+        cursor.execute("""
+            SELECT value FROM system WHERE name=%s
+            """, (db_default.name, ))
         value = cursor.fetchone()
         try:
             self.found_db_version = int(value[0])
@@ -90,44 +91,51 @@ class SubTicketsSystem(Component):
 
         return False
 
-    def upgrade_environment(self, db):
+    def upgrade_environment(self, db=None):
         db_manager, _ = DatabaseManager(self.env)._get_connector()
 
         # update the version
-        old_data = {} # {table.name: (cols, rows)}
-        cursor = db.cursor()
-        if not self.found_db_version:
-            cursor.execute("INSERT INTO system (name, value) VALUES (%s, %s)",
-                           (db_default.name, db_default.version))
-        else:
-            cursor.execute("UPDATE system SET value=%s WHERE name=%s",
-                           (db_default.version, db_default.name))
+        with self.env.db_transaction as db:
+            old_data = {} # {table.name: (cols, rows)}
+            cursor = db.cursor()
+            if not self.found_db_version:
+                cursor.execute("""
+                    INSERT INTO system (name, value) VALUES (%s, %s)
+                    """, (db_default.name, db_default.version))
+            else:
+                cursor.execute("""
+                    UPDATE system SET value=%s WHERE name=%s
+                    """, (db_default.version, db_default.name))
+
+                for table in db_default.tables:
+                    cursor.execute("""
+                        SELECT * FROM """ + table.name)
+                    cols = [x[0] for x in cursor.description]
+                    rows = cursor.fetchall()
+                    old_data[table.name] = (cols, rows)
+                    cursor.execute("""
+                        DROP TABLE """ + table.name)
+
+            # insert the default table
             for table in db_default.tables:
-                cursor.execute("SELECT * FROM " + table.name)
-                cols = [x[0] for x in cursor.description]
-                rows = cursor.fetchall()
-                old_data[table.name] = (cols, rows)
-                cursor.execute("DROP TABLE " + table.name)
+                for sql in db_manager.to_sql(table):
+                    cursor.execute(sql)
 
-        # insert the default table
-        for table in db_default.tables:
-            for sql in db_manager.to_sql(table):
-                cursor.execute(sql)
+                # add old data
+                if table.name in old_data:
+                    cols, rows = old_data[table.name]
+                    sql = """
+                        INSERT INTO %s (%s) VALUES (%s)
+                        """ % (table.name, ','.join(cols), ','.join(['%s'] * len(cols)))
+                    for row in rows:
+                        cursor.execute(sql, row)
 
-            # add old data
-            if table.name in old_data:
-                cols, rows = old_data[table.name]
-                sql = 'INSERT INTO %s (%s) VALUES (%s)' % \
-                    (table.name, ','.join(cols), ','.join(['%s'] * len(cols)))
-                for row in rows:
-                    cursor.execute(sql, row)
-
-        # add the custom field
-        cfield = self.config['ticket-custom']
-        if 'parents' not in cfield:
-            cfield.set('parents', 'text')
-            cfield.set('parents.label', 'Parent Tickets')
-            self.config.save()
+            # add the custom field
+            cfield = self.config['ticket-custom']
+            if 'parents' not in cfield:
+                cfield.set('parents', 'text')
+                cfield.set('parents.label', 'Parent Tickets')
+                self.config.save()
 
     # ITicketChangeListener methods
     def ticket_created(self, ticket):
@@ -144,97 +152,101 @@ class SubTicketsSystem(Component):
         if new_parents == old_parents:
             return
 
-        db = self.env.get_db_cnx()
-        cursor = db.cursor()
+        with self.env.db_transaction as db:
+            cursor = db.cursor()
 
-        # remove old parents
-        for parent in old_parents - new_parents:
-            cursor.execute("DELETE FROM subtickets WHERE parent=%s AND child=%s",
-                           (parent, ticket.id))
-            # add a comment to old parent
-            xticket = Ticket(self.env, parent)
-            xticket.save_changes(author, _('Remove a subticket #%s.') % ticket.id)
-            tn = TicketNotifyEmail(self.env)
-            tn.notify(xticket, newticket=False, modtime=xticket['changetime'])
+            # remove old parents
+            for parent in old_parents - new_parents:
+                cursor.execute("""
+                    DELETE FROM subtickets WHERE parent=%s AND child=%s
+                    """, (parent, ticket.id))
+                # add a comment to old parent
+                xticket = Ticket(self.env, parent)
+                xticket.save_changes(author, _('Remove a subticket #%s.') % ticket.id)
+                tn = TicketNotifyEmail(self.env)
+                tn.notify(xticket, newticket=False, modtime=xticket['changetime'])
 
 
-        # add new parents
-        for parent in new_parents - old_parents:
-            cursor.execute("INSERT INTO subtickets VALUES(%s, %s)",
-                           (parent, ticket.id))
-            # add a comment to new parent
-            xticket = Ticket(self.env, parent)
-            xticket.save_changes(author, _('Add a subticket #%s.') % ticket.id)
-            tn = TicketNotifyEmail(self.env)
-            tn.notify(xticket, newticket=False, modtime=xticket['changetime'])
-
-        db.commit()
+            # add new parents
+            for parent in new_parents - old_parents:
+                cursor.execute("""
+                    INSERT INTO subtickets VALUES(%s, %s)
+                    """, (parent, ticket.id))
+                # add a comment to new parent
+                xticket = Ticket(self.env, parent)
+                xticket.save_changes(author, _('Add a subticket #%s.') % ticket.id)
+                tn = TicketNotifyEmail(self.env)
+                tn.notify(xticket, newticket=False, modtime=xticket['changetime'])
 
     def ticket_deleted(self, ticket):
-        db = self.env.get_db_cnx()
-        cursor = db.cursor()
-        # TODO: check if there's any child ticket
-        cursor.execute("DELETE FROM subtickets WHERE child=%s", (ticket.id, ))
-        db.commit()
+        with self.env.db_transaction as db:
+            cursor = db.cursor()
+            # TODO: check if there's any child ticket
+            cursor.execute("""
+                DELETE FROM subtickets WHERE child=%s
+                """, (ticket.id, ))
 
     # ITicketManipulator methods
     def prepare_ticket(self, req, ticket, fields, actions):
         pass
 
     def validate_ticket(self, req, ticket):
-        db = self.env.get_db_cnx()
-        cursor = db.cursor()
+        with self.env.db_query as db:
+            cursor = db.cursor()
 
-        try:
-            invalid_ids = set()
-            _ids = set(NUMBERS_RE.findall(ticket['parents'] or ''))
-            myid = str(ticket.id)
-            for id in _ids:
-                if id == myid:
-                    invalid_ids.add(id)
-                    yield 'parents', _('A ticket cannot be a parent to itself')
-                else:
-                    # check if the id exists
-                    cursor.execute("SELECT id FROM ticket WHERE id=%s", (id, ))
-                    row = cursor.fetchone()
-                    if row is None:
+            try:
+                invalid_ids = set()
+                _ids = set(NUMBERS_RE.findall(ticket['parents'] or ''))
+                myid = str(ticket.id)
+                for id in _ids:
+                    if id == myid:
                         invalid_ids.add(id)
-                        yield 'parents', _('Ticket #%s does not exist') % id
-
-            # circularity check function
-            def _check_parents(id, all_parents):
-                all_parents = all_parents + [id]
-                errors = []
-                cursor.execute("SELECT parent FROM subtickets WHERE child=%s", (id, ))
-                for x in [int(x[0]) for x in cursor]:
-                    if x in all_parents:
-                        invalid_ids.add(x)
-                        error = ' > '.join(['#%s' % n for n in all_parents + [x]])
-                        errors.append(('parents', _('Circularity error: %s') % error))
+                        yield 'parents', _("A ticket cannot be a parent of itself")
                     else:
-                        errors += _check_parents(x, all_parents)
-                return errors
+                        # check if the id exists
+                        cursor.execute("""
+                            SELECT id FROM ticket WHERE id=%s
+                            """, (id, ))
+                        row = cursor.fetchone()
+                        if row is None:
+                            invalid_ids.add(id)
+                            yield 'parents', _("Ticket #%(id)s does not exist", id=id)
 
-            for x in [i for i in _ids if i not in invalid_ids]:
-                # check parent ticket state
-                try:
-                    parent = Ticket(self.env, x)
-                    if parent and parent['status'] == 'closed' and ticket['status'] != 'closed':
+                # circularity check function
+                def _check_parents(id, all_parents):
+                    all_parents = all_parents + [id]
+                    errors = []
+                    cursor.execute("""
+                        SELECT parent FROM subtickets WHERE child=%s
+                        """, (id, ))
+                    for x in [int(x[0]) for x in cursor]:
+                        if x in all_parents:
+                            invalid_ids.add(x)
+                            error = ' > '.join(['#%s' % n for n in all_parents + [x]])
+                            errors.append(('parents', _('Circularity error: %(e)s', e=error)))
+                        else:
+                            errors += _check_parents(x, all_parents)
+                    return errors
+
+                for x in [i for i in _ids if i not in invalid_ids]:
+                    # Refuse modification if parent closed or if parentship is circular
+                    try:
+                        parent = Ticket(self.env, x)
+                        if parent and parent['status'] == 'closed' :
+                            invalid_ids.add(x)
+                            yield None, _("Cannot modify ticket because parent ticket #%(id)s is closed. Comments allowed, though.", id=x)
+                        else:
+                            # check circularity
+                            all_parents = ticket.id and [ticket.id] or []
+                            for error in _check_parents(int(x), all_parents):
+                                yield error
+                    except ResourceNotFound, e:
                         invalid_ids.add(x)
-                        yield 'parents', _('Parent ticket #%s is closed.') % x
-                    else:
-                        # check circularity
-                        all_parents = ticket.id and [ticket.id] or []
-                        for error in _check_parents(int(x), all_parents):
-                            yield error
-                except ResourceNotFound, e:
-                    invalid_ids.add(x)
 
-            valid_ids = _ids.difference(invalid_ids)
-            ticket['parents'] = valid_ids and ', '.join(sorted(valid_ids, key=lambda x: int(x))) or ''
-
-        except Exception, e:
-            import traceback
-            self.log.error(traceback.format_exc())
-            yield 'parents', _('Not a valid list of ticket IDs.')
+                valid_ids = _ids.difference(invalid_ids)
+                ticket['parents'] = valid_ids and ', '.join(sorted(valid_ids, key=lambda x: int(x))) or ''
+            except Exception, e:
+                import traceback
+                self.log.error(traceback.format_exc())
+                yield 'parents', _('Not a valid list of ticket IDs.')
 
