@@ -41,7 +41,7 @@ setup(
     url = 'http://github.com/trac-hacks/trac-subtickets-plugin',
     description = 'Trac Sub-Tickets Plugin',
     long_description = """
-    This plugin for Trac 0.12 and later provides Sub-Tickets functionality.
+    This plugin for Trac 1.0 and later provides Sub-Tickets functionality.
 
     The association is done by adding parent tickets number to a custom field.
     Checks ensure i.e. resolving of sub-tickets before closing the parent.
@@ -49,7 +49,7 @@ setup(
     Currently only translation for de_DE is provided.
     """,
     license = 'BSD',
-
+    install_requires = ['Trac >= 1.0'],
 
     packages = find_packages(exclude=['*.tests*']),
     package_data = {
