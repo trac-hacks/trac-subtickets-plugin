@@ -206,6 +206,10 @@ class SubTicketsModule(Component):
                                     href = req.href.query(status='!closed',
                                                           owner=ticket['owner'])
                                 e = tag.td(tag.a(ticket['owner'], href=href))
+                            elif column == 'milestone':
+                                href = req.href.query(status='!closed',
+                                                      milestone=ticket['milestone'])
+                                e = tag.td(tag.a(ticket['milestone'], href=href))
                             else:
                                 e = tag.td(ticket[column])
 
