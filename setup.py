@@ -32,7 +32,7 @@ from setuptools import find_packages, setup
 
 setup(
     name = 'TracSubTicketsPlugin',
-    version = '0.4.0',
+    version = '0.4.1',
     keywords = 'trac plugin ticket subticket',
     author = 'Takashi Ito',
     author_email = 'TakashiC.Ito@gmail.com',
@@ -49,7 +49,6 @@ setup(
     Currently only translation for de_DE is provided.
     """,
     license = 'BSD',
-    install_requires = ['Trac >= 1.0'],
 
     packages = find_packages(exclude=['*.tests*']),
     package_data = {
