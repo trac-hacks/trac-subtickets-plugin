@@ -33,9 +33,10 @@ from trac.web.chrome import ITemplateProvider, add_stylesheet
 from trac.ticket.api import ITicketManipulator
 from trac.ticket.model import Ticket
 from trac.resource import ResourceNotFound
+from trac.config import BoolOption
 from genshi.builder import tag
 from genshi.filters import Transformer
-
+  
 from api import NUMBERS_RE, _
 
 
@@ -46,6 +47,9 @@ class SubTicketsModule(Component):
                ITicketManipulator,
                ITemplateStreamFilter)
 
+    recursion = BoolOption('tracsubtickets', 'recursion', False,
+              doc="The option of recursion showing of tickets in the ticket.")
+              
     # ITemplateProvider methods
     def get_htdocs_dirs(self):
         from pkg_resources import resource_filename
@@ -136,6 +140,7 @@ class SubTicketsModule(Component):
 
     # ITemplateStreamFilter method
     def filter_stream(self, req, method, filename, stream, data):
+        
         if req.path_info.startswith('/ticket/'):
             div = None
             if 'ticket' in data:
@@ -212,9 +217,13 @@ class SubTicketsModule(Component):
                             r.append(e)
 
                         tbody.append(tag.tr(*r))
-                        _func(children[id], depth + 1)
+                        if depth >= 0: 
+                            _func(children[id], depth + 1)
 
-                _func(data['subtickets'])
+                if self.recursion:
+                    _func(data['subtickets'])
+                else:
+                    _func(data['subtickets'],-1)
 
             if div:
                 add_stylesheet(req, 'subtickets/css/subtickets.css')
