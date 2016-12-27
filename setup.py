@@ -32,7 +32,7 @@ from setuptools import find_packages, setup
 
 setup(
     name = 'TracSubTicketsPlugin',
-    version = '0.3.0',
+    version = '0.4.1',
     keywords = 'trac plugin ticket subticket',
     author = 'Takashi Ito',
     author_email = 'TakashiC.Ito@gmail.com',
@@ -41,7 +41,7 @@ setup(
     url = 'http://github.com/trac-hacks/trac-subtickets-plugin',
     description = 'Trac Sub-Tickets Plugin',
     long_description = """
-    This plugin for Trac 0.12 and later provides Sub-Tickets functionality.
+    This plugin for Trac 1.0 and later provides Sub-Tickets functionality.
 
     The association is done by adding parent tickets number to a custom field.
     Checks ensure i.e. resolving of sub-tickets before closing the parent.
@@ -49,7 +49,6 @@ setup(
     Currently only translation for de_DE is provided.
     """,
     license = 'BSD',
-
 
     packages = find_packages(exclude=['*.tests*']),
     package_data = {
