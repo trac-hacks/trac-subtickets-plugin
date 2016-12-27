@@ -33,6 +33,7 @@ from trac.web.chrome import ITemplateProvider, add_stylesheet
 from trac.ticket.api import ITicketManipulator
 from trac.ticket.model import Ticket
 from trac.resource import ResourceNotFound
+from trac.config import BoolOption
 from genshi.builder import tag
 from genshi.filters import Transformer
 
@@ -45,6 +46,11 @@ class SubTicketsModule(Component):
                IRequestFilter,
                ITicketManipulator,
                ITemplateStreamFilter)
+               
+    resolve_validate = BoolOption('ticket-workflow', 'resolve.validate', True,
+              doc="The option of validating status of subtickets for resolving.")
+    reopen_validate = BoolOption('ticket-workflow', 'reopen.validate', True,
+              doc="The option of validating status of subtickets for reopening.")
 
     # ITemplateProvider methods
     def get_htdocs_dirs(self):
@@ -116,8 +122,9 @@ class SubTicketsModule(Component):
             return children
 
     def validate_ticket(self, req, ticket):
+
         action = req.args.get('action')
-        if action == 'resolve':
+        if action == 'resolve' and self.resolve_validate:
             with self.env.db_query as db:
                 cursor = db.cursor()
                 cursor.execute("""
@@ -128,7 +135,7 @@ class SubTicketsModule(Component):
                     if Ticket(self.env, child)['status'] != 'closed':
                         yield None, _("Cannot close/resolve because child ticket #%(child)s is still open", child=child)
 
-        elif action == 'reopen':
+        elif action == 'reopen' and self.reopen_validate:
             ids = set(NUMBERS_RE.findall(ticket['parents'] or ''))
             for id in ids:
                 if Ticket(self.env, id)['status'] == 'closed':
