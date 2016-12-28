@@ -27,17 +27,18 @@
 # ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
 # POSSIBILITY OF SUCH DAMAGE.
 
+from trac.config import Option, IntOption, ChoiceOption, ListOption
 from trac.core import *
 from trac.web.api import IRequestFilter, ITemplateStreamFilter
 from trac.web.chrome import ITemplateProvider, add_stylesheet
 from trac.ticket.api import ITicketManipulator
 from trac.ticket.model import Ticket
+from trac.ticket.model import Type as TicketType
 from trac.resource import ResourceNotFound
 from genshi.builder import tag
 from genshi.filters import Transformer
 
 from api import NUMBERS_RE, _
-
 
 class SubTicketsModule(Component):
 
@@ -45,6 +46,55 @@ class SubTicketsModule(Component):
                IRequestFilter,
                ITicketManipulator,
                ITemplateStreamFilter)
+
+    ### Simple Options
+
+    opt_recursion_depth = IntOption('subtickets', 'recursion_depth', default=-1, 
+                                    doc = _("""
+                                    Limit the number of recursive levels when listing
+                                    subtickets. Default is infinity, represented by
+                                    `-1`. The value zero (0) limits the listing to
+                                    immediate children.
+                                    """)
+                                    )
+    opt_add_style = ChoiceOption('subtickets', 'add_style', ['button', 'link'],
+                                 doc = _("""
+                                 Choose whether to make `Add` look like a button (default)
+                                 or a link
+                                 """)
+                                 )
+    opt_owner_url = Option('subtickets', 'owner_url',
+                           doc = _("""
+                           Currently undocumented.
+                           """)
+                           )
+
+    ### Per-ticket options -- all initialised in __init__()
+
+    opt_inherit_fields = dict() 
+    opt_columns = dict()
+
+    ###
+
+    def __init__(self):
+        # The following initialisations must happen inside init() in order to access self.env
+        for tt in TicketType.select(self.env):
+            self.opt_inherit_fields[tt.name] = ListOption('subtickets','%s.child_inherits' % tt.name,
+                                        default='', doc = _("""
+                                        Comma-separated list of ticket fields whose values are
+                                        to be copied from a parent ticket into a newly created
+                                        child ticket
+                                        """)
+                                        )
+            self.opt_columns[tt.name] = ListOption('subtickets', '%s.table_columns' % tt.name, 
+                                 default='status,owner',
+                                 doc = _("""
+                                 Comma-separated list of ticket fields whose values are to be
+                                 shown for each child ticket in the subtickets list
+                                 """)
+                                 )
+
+
 
     # ITemplateProvider methods
     def get_htdocs_dirs(self):
@@ -143,11 +193,11 @@ class SubTicketsModule(Component):
                 ticket = data['ticket']
                 # title
                 div = tag.div(class_='description')
-                add_style = self.config.get('subtickets', 'add_style', default='link')
-                inherit_fields = self.config.getlist('subtickets','%s.child_inherits' % ticket['type'])
                 if 'TICKET_CREATE' in req.perm(ticket.resource) and ticket['status'] != 'closed':
-                    if add_style == 'link':
-                        inh  = {f: ticket[f] for f in inherit_fields}
+                    opt_inherit = self.env.config.getlist('subtickets', 
+                                                          '%(type)s.child_inherits' % ticket)
+                    if self.opt_add_style == 'link':
+                        inh  = {f: ticket[f] for f in opt_inherit}
                         link = tag.a('add', 
                                      href=req.href.newticket(parents=ticket.id, *inh))
                         link = tag.span('(', link, ')', class_='addsubticket')
@@ -155,7 +205,7 @@ class SubTicketsModule(Component):
                     else:
                         inh = [tag.input(type  = 'hidden', 
                                          name  = f, 
-                                         value = ticket[f]) for f in inherit_fields]
+                                         value = ticket[f]) for f in opt_inherit]
 
                         link = None
                         button = tag.form(tag.div(tag.input(type="submit", 
@@ -177,12 +227,9 @@ class SubTicketsModule(Component):
                 # table
                 tbody = tag.tbody()
                 div.append(tag.table(tbody, class_='subtickets'))
-                columns = self.config.getlist('subtickets', 
-                                              '%s.table_columns' % ticket['type'], 
-                                              default=['status','owner'])
-                owner_url = self.config.get('subtickets', 'owner_url')
                 # tickets
                 def _func(children, depth=0):
+                    print '_func', depth, children
                     for id in sorted(children, key=lambda x: int(x)):
                         ticket = Ticket(self.env, id)
 
@@ -198,10 +245,11 @@ class SubTicketsModule(Component):
                         r.append(summary)
 
                         # Add other columns as configured.
-                        for column in columns:
+                        for column in self.env.config.getlist('subtickets', 
+                                                              '%(type)s.table_columns' % ticket):
                             if column == 'owner':
-                                if owner_url:
-                                    href = req.href(owner_url % ticket['owner'])
+                                if self.opt_owner_url:
+                                    href = req.href(self.opt_owner_url % ticket['owner'])
                                 else:
                                     href = req.href.query(status='!closed',
                                                           owner=ticket['owner'])
@@ -216,7 +264,9 @@ class SubTicketsModule(Component):
                             r.append(e)
 
                         tbody.append(tag.tr(*r))
-                        _func(children[id], depth + 1)
+
+                        if self.opt_recursion_depth > depth or self.opt_recursion_depth == -1 :
+                            _func(children[id], depth + 1)
 
                 _func(data['subtickets'])
 

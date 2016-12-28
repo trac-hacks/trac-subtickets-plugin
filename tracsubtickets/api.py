@@ -31,11 +31,13 @@ import re
 
 import pkg_resources
 
+from trac.config import Option, IntOption, ChoiceOption, ListOption
 from trac.core import *
 from trac.env import IEnvironmentSetupParticipant
 from trac.db import DatabaseManager
 from trac.resource import ResourceNotFound
 from trac.ticket.model import Ticket
+from trac.ticket.model import Type as TicketType
 from trac.ticket.api import ITicketChangeListener, ITicketManipulator
 from trac.ticket.notification import TicketNotifyEmail
 
