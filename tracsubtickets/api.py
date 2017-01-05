@@ -31,13 +31,12 @@ import re
 
 import pkg_resources
 
-from trac.config import Option, IntOption, ChoiceOption, ListOption
+from trac.config import Option, BoolOption, IntOption, ChoiceOption, ListOption
 from trac.core import *
 from trac.env import IEnvironmentSetupParticipant
 from trac.db import DatabaseManager
 from trac.resource import ResourceNotFound
 from trac.ticket.model import Ticket
-from trac.ticket.model import Type as TicketType
 from trac.ticket.api import ITicketChangeListener, ITicketManipulator
 from trac.ticket.notification import TicketNotifyEmail
 
@@ -60,6 +59,18 @@ class SubTicketsSystem(Component):
     implements(IEnvironmentSetupParticipant,
                ITicketChangeListener,
                ITicketManipulator)
+
+    opt_no_modif_w_p_c = BoolOption \
+        ('subtickets', 'no_modif_when_parent_closed', default='false', 
+         doc = _("""
+         If `True`, any modification of a child whose parent is `closed`
+         will be blocked. If `False`, status changes will be blocked as 
+         controlled by the setting of `skip_closure_validation`.
+
+         For compatibility with plugin versions prior to 0.5 that blocked
+         any modification unconditionally.
+         """)
+         )
 
     def __init__(self):
         self._version = None
@@ -193,62 +204,64 @@ class SubTicketsSystem(Component):
         pass
 
     def validate_ticket(self, req, ticket):
-        with self.env.db_query as db:
-            cursor = db.cursor()
-
-            try:
-                invalid_ids = set()
-                _ids = set(NUMBERS_RE.findall(ticket['parents'] or ''))
-                myid = str(ticket.id)
-                for id in _ids:
-                    if id == myid:
-                        invalid_ids.add(id)
-                        yield 'parents', _("A ticket cannot be a parent of itself")
-                    else:
-                        # check if the id exists
-                        cursor.execute("""
-                            SELECT id FROM ticket WHERE id=%s
-                            """, (id, ))
-                        row = cursor.fetchone()
-                        if row is None:
-                            invalid_ids.add(id)
-                            yield 'parents', _("Ticket #%(id)s does not exist", id=id)
-
-                # circularity check function
-                def _check_parents(id, all_parents):
-                    all_parents = all_parents + [id]
-                    errors = []
-                    cursor.execute("""
-                        SELECT parent FROM subtickets WHERE child=%s
+        try:
+            invalid_ids = set()
+            _ids = set(NUMBERS_RE.findall(ticket['parents'] or ''))
+            myid = str(ticket.id)
+            for id in _ids:
+                if id == myid:
+                    invalid_ids.add(id)
+                    yield 'parents', _("A ticket cannot be a parent of itself")
+                else:
+                    # check if the id exists
+                    tkt_id = self.env.db_query("""
+                        SELECT id FROM ticket WHERE id=%s
                         """, (id, ))
-                    for x in [int(x[0]) for x in cursor]:
-                        if x in all_parents:
-                            invalid_ids.add(x)
-                            error = ' > '.join(['#%s' % n for n in all_parents + [x]])
-                            errors.append(('parents', _('Circularity error: %(e)s', e=error)))
-                        else:
-                            errors += _check_parents(x, all_parents)
-                    return errors
+                    if not tkt_id:
+                        invalid_ids.add(id)
+                        yield 'parents', _("Ticket #%(id)s does not exist", 
+                                           id=id)
 
-                for x in [i for i in _ids if i not in invalid_ids]:
-                    # Refuse modification if parent closed or if parentship is circular
-                    try:
-                        parent = Ticket(self.env, x)
-                        if parent and parent['status'] == 'closed' :
-                            invalid_ids.add(x)
-                            yield None, _("Cannot modify ticket because parent ticket #%(id)s is closed. Comments allowed, though.", id=x)
-                        else:
-                            # check circularity
-                            all_parents = ticket.id and [ticket.id] or []
-                            for error in _check_parents(int(x), all_parents):
-                                yield error
-                    except ResourceNotFound, e:
+            # circularity check function
+            def _check_parents(id, all_parents):
+                all_parents = all_parents + [id]
+                errors = []
+                parents = self.env.db_query("""
+                    SELECT parent FROM subtickets WHERE child=%s
+                    """, (id, ))
+                for x in [int(x[0]) for x in parents]:
+                    if x in all_parents:
                         invalid_ids.add(x)
+                        error = ' > '.join(['#%s' % n for n in all_parents+[x]])
+                        errors.append(('parents', _('Circularity error: %(e)s',
+                                                    e=error)))
+                    else:
+                        errors += _check_parents(x, all_parents)
+                return errors
 
-                valid_ids = _ids.difference(invalid_ids)
-                ticket['parents'] = valid_ids and ', '.join(sorted(valid_ids, key=lambda x: int(x))) or ''
-            except Exception, e:
-                import traceback
-                self.log.error(traceback.format_exc())
-                yield 'parents', _('Not a valid list of ticket IDs.')
+            for x in [i for i in _ids if i not in invalid_ids]:
+                # Refuse modification if parent closed 
+                # or if parentship is to be made circular
+                try:
+                    parent = Ticket(self.env, x)
+                    if parent and parent['status'] == 'closed' \
+                       and self.opt_no_modif_w_p_c:
+                        invalid_ids.add(x)
+                        yield None, _("""Cannot modify ticket because 
+                            parent ticket #%(id)s is closed. 
+                            Comments allowed, though.""",
+                            id=x)
+                    # check circularity
+                    all_parents = ticket.id and [ticket.id] or []
+                    for error in _check_parents(int(x), all_parents):
+                        yield error
+                except ResourceNotFound, e:
+                    invalid_ids.add(x)
+
+            valid_ids = _ids.difference(invalid_ids)
+            ticket['parents'] = valid_ids and ', '.join(sorted(valid_ids, key=lambda x: int(x))) or ''
+        except Exception, e:
+            import traceback
+            self.log.error(traceback.format_exc())
+            yield 'parents', _('Not a valid list of ticket IDs.')
 

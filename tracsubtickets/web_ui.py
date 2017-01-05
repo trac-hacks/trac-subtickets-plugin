@@ -49,20 +49,36 @@ class SubTicketsModule(Component):
 
     ### Simple Options
 
-    opt_recursion_depth = IntOption('subtickets', 'recursion_depth', default=-1, 
-                                    doc = _("""
-                                    Limit the number of recursive levels when listing
-                                    subtickets. Default is infinity, represented by
-                                    `-1`. The value zero (0) limits the listing to
-                                    immediate children.
-                                    """)
-                                    )
-    opt_add_style = ChoiceOption('subtickets', 'add_style', ['button', 'link'],
-                                 doc = _("""
-                                 Choose whether to make `Add` look like a button (default)
-                                 or a link
-                                 """)
-                                 )
+    opt_skip_validation = ListOption \
+        ('subtickets', 'skip_closure_validation',
+         default=[],
+         doc = _("""
+         Normally, reopening a child with a `closed` parent will be
+         refused and closing a parent with non-`closed` children will also
+         be refused. Adding either of `reopen` or `resolve` to this option will
+         make Subtickets skip this validation for the respective action.
+         Separate by comma if both actions are listed.
+
+         Caveat: This functionality will be made workflow-independent in a 
+         future release of !SubTicketsPlugin.
+         """)
+         )
+
+    opt_recursion_depth = IntOption \
+        ('subtickets', 'recursion_depth', default=-1, 
+         doc = _("""
+         Limit the number of recursive levels when listing subtickets. 
+         Default is infinity, represented by`-1`. The value zero (0)
+         limits the listing to immediate children.
+         """)
+         )
+    opt_add_style = ChoiceOption \
+        ('subtickets', 'add_style', ['button', 'link'],
+         doc = _("""
+         Choose whether to make `Add` look like a button (default) or a link
+         """)
+         )
+
     opt_owner_url = Option('subtickets', 'owner_url',
                            doc = _("""
                            Currently undocumented.
@@ -77,22 +93,26 @@ class SubTicketsModule(Component):
     ###
 
     def __init__(self):
-        # The following initialisations must happen inside init() in order to access self.env
+        # The following initialisations must happen inside init() 
+        # in order to be able to access self.env
         for tt in TicketType.select(self.env):
-            self.opt_inherit_fields[tt.name] = ListOption('subtickets','%s.child_inherits' % tt.name,
-                                        default='', doc = _("""
-                                        Comma-separated list of ticket fields whose values are
-                                        to be copied from a parent ticket into a newly created
-                                        child ticket
-                                        """)
-                                        )
-            self.opt_columns[tt.name] = ListOption('subtickets', '%s.table_columns' % tt.name, 
-                                 default='status,owner',
-                                 doc = _("""
-                                 Comma-separated list of ticket fields whose values are to be
-                                 shown for each child ticket in the subtickets list
-                                 """)
-                                 )
+            self.opt_inherit_fields[tt.name] = ListOption \
+                ('subtickets','%s.child_inherits' % tt.name,
+                 default='', 
+                 doc = _("""
+                 Comma-separated list of ticket fields whose values are
+                 to be copied from a parent ticket into a newly created
+                 child ticket
+                 """)
+                 )
+            self.opt_columns[tt.name] = ListOption \
+                ('subtickets', '%s.table_columns' % tt.name, 
+                 default='status,owner',
+                 doc = _("""
+                 Comma-separated list of ticket fields whose values are to be
+                 shown for each child ticket in the subtickets list
+                 """)
+                 )
 
 
 
@@ -150,39 +170,41 @@ class SubTicketsModule(Component):
         pass
 
     def get_children(self, parent_id):
-        with self.env.db_query as db:
-            children = {}
-            cursor = db.cursor()
-            cursor.execute("""
-                SELECT parent, child FROM subtickets WHERE parent=%s
-                """, (parent_id, ))
+        children = {}
 
-            for parent, child in cursor:
-                children[child] = None
+        for parent, child in self.env.db_query("""
+            SELECT parent, child FROM subtickets WHERE parent=%s
+            """, (parent_id, )):
+            children[child] = None
 
-            for id in children:
-                children[id] = self.get_children(id)
+        for id in children:
+            children[id] = self.get_children(id)
 
-            return children
+        return children
 
     def validate_ticket(self, req, ticket):
         action = req.args.get('action')
-        if action == 'resolve':
-            with self.env.db_query as db:
-                cursor = db.cursor()
-                cursor.execute("""
-                    SELECT parent, child FROM subtickets WHERE parent=%s
-                    """, (ticket.id, ))
 
-                for parent, child in cursor:
-                    if Ticket(self.env, child)['status'] != 'closed':
-                        yield None, _("Cannot close/resolve because child ticket #%(child)s is still open", child=child)
+        if action in self.opt_skip_validation:
+            return
+
+        if action == 'resolve':
+
+            for parent, child in self.env.db_query("""
+                SELECT parent, child FROM subtickets WHERE parent=%s
+                """, (ticket.id, )):
+                if Ticket(self.env, child)['status'] != 'closed':
+                    yield None, _("""Cannot close/resolve because child 
+                         ticket #%(child)s is still open""", 
+                                  child=child)
 
         elif action == 'reopen':
             ids = set(NUMBERS_RE.findall(ticket['parents'] or ''))
             for id in ids:
                 if Ticket(self.env, id)['status'] == 'closed':
-                    yield None, _("Cannot reopen because parent ticket #%(id)s is closed", id=id)
+                    yield None, 
+                    _("Cannot reopen because parent ticket #%(id)s is closed", 
+                      id=id)
 
     # ITemplateStreamFilter method
     def filter_stream(self, req, method, filename, stream, data):
@@ -229,7 +251,6 @@ class SubTicketsModule(Component):
                 div.append(tag.table(tbody, class_='subtickets'))
                 # tickets
                 def _func(children, depth=0):
-                    print '_func', depth, children
                     for id in sorted(children, key=lambda x: int(x)):
                         ticket = Ticket(self.env, id)
 
