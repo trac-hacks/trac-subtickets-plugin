@@ -132,7 +132,7 @@ class SubTicketsModule(Component):
 
     def post_process_request(self, req, template, data, content_type):
         path = req.path_info
-        print '*** REQ *** \n', req.query_string, req.path_info
+
         if path.startswith('/ticket/') or path.startswith('/newticket'):
             # get parent ticket's data
             if data and 'ticket' in data:
@@ -144,15 +144,14 @@ class SubTicketsModule(Component):
                     self._append_parent_links(req, data, ids)
     
                 children = self.get_children(ticket.id)
-
                 if children:
                     data['subtickets'] = children
+
         elif path.startswith('/admin/ticket/type') \
                 and data \
                 and set(['add', 'name']).issubset(data.keys()) \
                 and data['add'] == 'Add':
             self._add_per_ticket_type_option(data['name'])
-                
 
         return template, data, content_type
 
