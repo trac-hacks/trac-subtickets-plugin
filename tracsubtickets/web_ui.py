@@ -85,10 +85,30 @@ class SubTicketsModule(Component):
                            """)
                            )
 
-    ### Per-ticket options -- all initialised in __init__()
+    ### Per-ticket type options -- all initialised in __init__()
 
     opt_inherit_fields = dict() 
     opt_columns = dict()
+
+    def _add_per_ticket_type_option(self, ticket_type):
+        self.opt_inherit_fields[ticket_type] = ListOption \
+            ('subtickets','type.%s.child_inherits' % ticket_type,
+             default='', 
+             doc = _("""
+             Comma-separated list of ticket fields whose values are
+             to be copied from a parent ticket into a newly created
+             child ticket
+             """)
+             )
+        self.opt_columns[ticket_type] = ListOption \
+            ('subtickets', 'type.%s.table_columns' % ticket_type, 
+             default='status,owner',
+             doc = _("""
+             Comma-separated list of ticket fields whose values are to be
+             shown for each child ticket in the subtickets list
+             """)
+             )
+
 
     ###
 
@@ -96,25 +116,7 @@ class SubTicketsModule(Component):
         # The following initialisations must happen inside init() 
         # in order to be able to access self.env
         for tt in TicketType.select(self.env):
-            self.opt_inherit_fields[tt.name] = ListOption \
-                ('subtickets','%s.child_inherits' % tt.name,
-                 default='', 
-                 doc = _("""
-                 Comma-separated list of ticket fields whose values are
-                 to be copied from a parent ticket into a newly created
-                 child ticket
-                 """)
-                 )
-            self.opt_columns[tt.name] = ListOption \
-                ('subtickets', '%s.table_columns' % tt.name, 
-                 default='status,owner',
-                 doc = _("""
-                 Comma-separated list of ticket fields whose values are to be
-                 shown for each child ticket in the subtickets list
-                 """)
-                 )
-
-
+            self._add_per_ticket_type_option(tt.name)
 
     # ITemplateProvider methods
     def get_htdocs_dirs(self):
@@ -130,6 +132,7 @@ class SubTicketsModule(Component):
 
     def post_process_request(self, req, template, data, content_type):
         path = req.path_info
+        print '*** REQ *** \n', req.query_string, req.path_info
         if path.startswith('/ticket/') or path.startswith('/newticket'):
             # get parent ticket's data
             if data and 'ticket' in data:
@@ -144,6 +147,12 @@ class SubTicketsModule(Component):
 
                 if children:
                     data['subtickets'] = children
+        elif path.startswith('/admin/ticket/type') \
+                and data \
+                and set(['add', 'name']).issubset(data.keys()) \
+                and data['add'] == 'Add':
+            self._add_per_ticket_type_option(data['name'])
+                
 
         return template, data, content_type
 
@@ -215,13 +224,14 @@ class SubTicketsModule(Component):
                 ticket = data['ticket']
                 # title
                 div = tag.div(class_='description')
-                if 'TICKET_CREATE' in req.perm(ticket.resource) and ticket['status'] != 'closed':
+                if 'TICKET_CREATE' in req.perm(ticket.resource) \
+                        and ticket['status'] != 'closed':
                     opt_inherit = self.env.config.getlist('subtickets', 
-                                                          '%(type)s.child_inherits' % ticket)
+                                                          'type.%(type)s.child_inherits' % ticket)
                     if self.opt_add_style == 'link':
                         inh  = {f: ticket[f] for f in opt_inherit}
                         link = tag.a('add', 
-                                     href=req.href.newticket(parents=ticket.id, *inh))
+                                     href=req.href.newticket(parents=ticket.id, **inh))
                         link = tag.span('(', link, ')', class_='addsubticket')
                         button = None
                     else:
@@ -267,7 +277,7 @@ class SubTicketsModule(Component):
 
                         # Add other columns as configured.
                         for column in self.env.config.getlist('subtickets', 
-                                                              '%(type)s.table_columns' % ticket):
+                                                              'type.%(type)s.table_columns' % ticket):
                             if column == 'owner':
                                 if self.opt_owner_url:
                                     href = req.href(self.opt_owner_url % ticket['owner'])
