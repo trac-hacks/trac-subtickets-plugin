@@ -32,7 +32,7 @@ from setuptools import find_packages, setup
 
 setup(
     name = 'TracSubTicketsPlugin',
-    version = '0.4.0',
+    version = '0.5.0',
     keywords = 'trac plugin ticket subticket',
     author = 'Takashi Ito',
     author_email = 'TakashiC.Ito@gmail.com',
@@ -43,10 +43,9 @@ setup(
     long_description = """
     This plugin for Trac 1.0 and later provides Sub-Tickets functionality.
 
-    The association is done by adding parent tickets number to a custom field.
+    The association is done by adding parent tickets' number to a custom field.
     Checks ensure i.e. resolving of sub-tickets before closing the parent.
     Babel is required to display localized texts.
-    Currently only translation for de_DE is provided.
     """,
     license = 'BSD',
     install_requires = ['Trac >= 1.0'],
