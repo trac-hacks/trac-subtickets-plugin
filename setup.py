@@ -48,7 +48,6 @@ setup(
     Babel is required to display localized texts.
     """,
     license = 'BSD',
-    install_requires = ['Trac >= 1.0'],
 
     packages = find_packages(exclude=['*.tests*']),
     package_data = {

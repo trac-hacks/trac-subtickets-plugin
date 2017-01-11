@@ -1,0 +1,59 @@
+# Translation of tracsubtickets.po to Russian
+# Copyright (C) 2016 
+# This file is distributed under the same license as the
+# TracSubTicketsPlugin project.
+# Andrey Rodionov <roand@inbox.ru>, 2016.
+#
+msgid ""
+msgstr ""
+"Project-Id-Version: TracSubTicketsPlugin 0.1.x\n"
+"Report-Msgid-Bugs-To: roand@inbox.ru\n"
+"POT-Creation-Date: 2016-02-20 01:38+0200\n"
+"PO-Revision-Date: 2016-02-20 01:38+0200\n"
+"Last-Translator: Andrey Rodionov <roand@inbox.ru>\n"
+"Language-Team: Russian ru_RU <trac-dev@googlegroups.com>\n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=utf-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+"Generated-By: Babel 1.0dev-r482\n"
+
+#: tracsubtickets/api.py:179
+msgid "A ticket cannot be a parent to itself"
+msgstr "Карточка не может быть родителем самой себе"
+
+#: tracsubtickets/api.py:185
+#, python-format
+msgid "Ticket #%s does not exist"
+msgstr "Карточка #%s не существует"
+
+#: tracsubtickets/api.py:196
+#, python-format
+msgid "Circularity error: %s"
+msgstr "Ошибка закольцовывания: %s"
+
+#: tracsubtickets/api.py:205 tracsubtickets/web_ui.py:129
+#, python-format
+msgid "Parent ticket #%s is closed"
+msgstr "Карточка родитель #%s закрыта"
+
+#: tracsubtickets/api.py:216
+msgid "Not a valid list of ticket IDs"
+msgstr "Недопустимый список идентификаторов карточек"
+
+#: tracsubtickets/web_ui.py:123
+#, python-format
+msgid "Child ticket #%s has not been closed yet"
+msgstr "Подкарточка #%s не закрыта"
+
+#: tracsubtickets/web_ui.py:141
+msgid "add"
+msgstr "добавить"
+
+#: tracsubtickets/web_ui.py:143
+msgid "Create new child ticket"
+msgstr "Создать новую подкарточку"
+
+#: tracsubtickets/web_ui.py:147
+msgid "Subtickets "
+msgstr "Подкарточки "
+
