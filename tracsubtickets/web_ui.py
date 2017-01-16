@@ -177,7 +177,7 @@ class SubTicketsModule(Component):
     def prepare_ticket(self, req, ticket, fields, actions):
         pass
 
-    def get_children(self, parent_id):
+    def get_children(self, parent_id, depth=0):
         children = {}
 
         for parent, child in self.env.db_query("""
@@ -185,8 +185,9 @@ class SubTicketsModule(Component):
             """, (parent_id, )):
             children[child] = None
 
-        for id in children:
-            children[id] = self.get_children(id)
+        if self.opt_recursion_depth > depth or self.opt_recursion_depth == -1:
+            for id in children:
+                children[id] = self.get_children(id, depth + 1)
 
         return children
 
