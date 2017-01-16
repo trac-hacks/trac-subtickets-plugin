@@ -216,94 +216,101 @@ class SubTicketsModule(Component):
                       id=id)
 
     # ITemplateStreamFilter method
-    def filter_stream(self, req, method, filename, stream, data):
-        if req.path_info.startswith('/ticket/'):
-            div = None
-            if 'ticket' in data:
-                # get parents data
-                ticket = data['ticket']
-                # title
-                div = tag.div(class_='description')
-                if 'TICKET_CREATE' in req.perm(ticket.resource) \
-                        and ticket['status'] != 'closed':
-                    opt_inherit = self.env.config.getlist('subtickets', 
-                                                          'type.%(type)s.child_inherits' % ticket)
-                    if self.opt_add_style == 'link':
-                        inh  = {f: ticket[f] for f in opt_inherit}
-                        link = tag.a('add', 
-                                     href=req.href.newticket(parents=ticket.id, **inh))
-                        link = tag.span('(', link, ')', class_='addsubticket')
-                        button = None
+
+    def _create_subtickets_table(self, req, children, tbody, depth=0):
+        """Recursively create list table of subtickets
+        """
+        if not children:
+            return
+        for id in sorted(children, key=lambda x: int(x)):
+            ticket = Ticket(self.env, id)
+
+            # the row
+            r = []
+            # Always show ID and summary
+            attrs = {'href': req.href.ticket(id)}
+            if ticket['status'] == 'closed':
+                attrs['class_'] = 'closed'
+            link = tag.a('#%s' % id, **attrs)
+            summary = tag.td(link, ': %s' % ticket['summary'],
+                style='padding-left: %dpx;' % (depth * 15))
+            r.append(summary)
+
+            # Add other columns as configured.
+            for column in self.env.config.getlist( \
+                          'subtickets', 
+                          'type.%(type)s.table_columns' % ticket,
+                          ):
+                if column == 'owner':
+                    if self.opt_owner_url:
+                        href = req.href(self.opt_owner_url % ticket['owner'])
                     else:
-                        inh = [tag.input(type  = 'hidden', 
-                                         name  = f, 
-                                         value = ticket[f]) for f in opt_inherit]
-
-                        link = None
-                        button = tag.form(tag.div(tag.input(type="submit", 
-                                                            value="Create", 
-                                                            title="Create a child ticket"),
-                                                  inh,
-                                                  tag.input(type="hidden", 
-                                                            name="parents", 
-                                                            value=str(ticket.id)),
-                                                  class_="inlinebuttons"),
-                                          method="get", action=req.href.newticket())
+                        href = req.href.query(status='!closed',
+                                              owner=ticket['owner'])
+                    e = tag.td(tag.a(ticket['owner'], href=href))
+                elif column == 'milestone':
+                    href = req.href.query(status='!closed',
+                                          milestone=ticket['milestone'])
+                    e = tag.td(tag.a(ticket['milestone'], 
+                                     href=href))
                 else:
-                    link = None
-                    button = None
-                div.append(button)
-                div.append(tag.h3(_('Subtickets '), link))
+                    e = tag.td(ticket[column])
+                r.append(e)
+            tbody.append(tag.tr(*r))
 
-            if 'subtickets' in data:
-                # table
-                tbody = tag.tbody()
-                div.append(tag.table(tbody, class_='subtickets'))
-                # tickets
-                def _func(children, depth=0):
-                    for id in sorted(children, key=lambda x: int(x)):
-                        ticket = Ticket(self.env, id)
+            self._create_subtickets_table(req, children[id], tbody, depth + 1)
 
-                        # the row
-                        r = []
-                        # Always show ID and summary
-                        attrs = {'href': req.href.ticket(id)}
-                        if ticket['status'] == 'closed':
-                            attrs['class_'] = 'closed'
-                        link = tag.a('#%s' % id, **attrs)
-                        summary = tag.td(link, ': %s' % ticket['summary'],
-                            style='padding-left: %dpx;' % (depth * 15))
-                        r.append(summary)
 
-                        # Add other columns as configured.
-                        for column in self.env.config.getlist('subtickets', 
-                                                              'type.%(type)s.table_columns' % ticket):
-                            if column == 'owner':
-                                if self.opt_owner_url:
-                                    href = req.href(self.opt_owner_url % ticket['owner'])
-                                else:
-                                    href = req.href.query(status='!closed',
-                                                          owner=ticket['owner'])
-                                e = tag.td(tag.a(ticket['owner'], href=href))
-                            elif column == 'milestone':
-                                href = req.href.query(status='!closed',
-                                                      milestone=ticket['milestone'])
-                                e = tag.td(tag.a(ticket['milestone'], href=href))
-                            else:
-                                e = tag.td(ticket[column])
+    def filter_stream(self, req, method, filename, stream, data):
+        if not req.path_info.startswith('/ticket/'):
+            return stream
 
-                            r.append(e)
+        div    = None
+        link   = None
+        button = None
 
-                        tbody.append(tag.tr(*r))
+        if 'ticket' in data:
+            # get parents data
+            ticket = data['ticket']
+            # title
+            div = tag.div(class_='description')
+            if 'TICKET_CREATE' in req.perm(ticket.resource) \
+                    and ticket['status'] != 'closed':
+                opt_inherit = self.env.config.getlist('subtickets', 
+                                                      'type.%(type)s.child_inherits' % ticket)
+                if self.opt_add_style == 'link':
+                    inh  = {f: ticket[f] for f in opt_inherit}
+                    link = tag.a('add', 
+                                 href=req.href.newticket(parents=ticket.id, 
+                                                         **inh))
+                    link = tag.span('(', link, ')', class_='addsubticket')
+                else:
+                    inh = [tag.input(type  = 'hidden', 
+                                     name  = f, 
+                                     value = ticket[f]) for f in opt_inherit]
 
-                        if self.opt_recursion_depth > depth or self.opt_recursion_depth == -1 :
-                            _func(children[id], depth + 1)
+                    button = tag.form(tag.div(tag.input(type="submit", 
+                                                        value="Create", 
+                                                        title="Create a child ticket"),
+                                              inh,
+                                              tag.input(type="hidden", 
+                                                        name="parents", 
+                                                        value=str(ticket.id)),
+                                              class_="inlinebuttons"),
+                                      method="get", action=req.href.newticket())
+            div.append(button)
+            div.append(tag.h3(_('Subtickets '), link))
 
-                _func(data['subtickets'])
+        if 'subtickets' in data:
+            # table
+            tbody = tag.tbody()
+            div.append(tag.table(tbody, class_='subtickets'))
+            # tickets
+            self._create_subtickets_table(req, data['subtickets'], tbody)
 
-            if div:
-                add_stylesheet(req, 'subtickets/css/subtickets.css')
-                stream |= Transformer('.//div[@id="ticket"]').append(div)
+        if div:
+            add_stylesheet(req, 'subtickets/css/subtickets.css')
+            stream |= Transformer('.//div[@id="ticket"]').append(div)
 
         return stream
 
