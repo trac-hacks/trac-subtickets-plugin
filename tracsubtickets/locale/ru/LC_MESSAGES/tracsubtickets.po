@@ -1,59 +1,197 @@
 # Translation of tracsubtickets.po to Russian
-# Copyright (C) 2016 
+# Copyright (C) 2016
 # This file is distributed under the same license as the
 # TracSubTicketsPlugin project.
-# Andrey Rodionov <roand@inbox.ru>, 2016.
-#
+# Andrey Rodionov <roand@inbox.ru>, 2017.
 msgid ""
 msgstr ""
-"Project-Id-Version: TracSubTicketsPlugin 0.1.x\n"
+"Project-Id-Version: TracSubTicketsPlugin 0.5.x\n"
 "Report-Msgid-Bugs-To: roand@inbox.ru\n"
-"POT-Creation-Date: 2016-02-20 01:38+0200\n"
-"PO-Revision-Date: 2016-02-20 01:38+0200\n"
+"POT-Creation-Date: 2017-01-24 22:26+0300\n"
+"PO-Revision-Date: 2017-01-24 22:26+0300\n"
 "Last-Translator: Andrey Rodionov <roand@inbox.ru>\n"
 "Language-Team: Russian ru_RU <trac-dev@googlegroups.com>\n"
 "MIME-Version: 1.0\n"
 "Content-Type: text/plain; charset=utf-8\n"
 "Content-Transfer-Encoding: 8bit\n"
-"Generated-By: Babel 1.0dev-r482\n"
+"Generated-By: Babel 2.3.4\n"
 
-#: tracsubtickets/api.py:179
-msgid "A ticket cannot be a parent to itself"
+#: api.py:65
+msgid ""
+"\n"
+"         If `True`, any modification of a child whose parent is `closed`\n"
+"         will be blocked. If `False`, status changes will be blocked as \n"
+"         controlled by the setting of `skip_closure_validation`.\n"
+"\n"
+"         For compatibility with plugin versions prior to 0.5 that blocked"
+"\n"
+"         any modification unconditionally.\n"
+"         "
+msgstr ""
+"\n"
+"         Если `True`, изменение подкарточек с родителем в состоянии `closed`\n"
+"         будет запрещено. Если `False`, изменение статуса будет запрещено,\n"
+"         так как контролируется настройкой `skip_closure_validation`.\n"
+"\n"
+"         Для совместимости с версиями плагинов до 0,5, которые"
+"\n"
+"         всегда блокировали любые изменения.\n"
+"         "
+
+#: api.py:178
+#, python-format
+msgid "Remove a subticket #%s."
+msgstr "Удалить подкарточку #%s."
+
+#: api.py:190
+#, python-format
+msgid "Add a subticket #%s."
+msgstr "Добавить подкарточку #%s."
+
+#: api.py:214
+msgid "A ticket cannot be a parent of itself"
 msgstr "Карточка не может быть родителем самой себе"
 
-#: tracsubtickets/api.py:185
+#: api.py:222
 #, python-format
-msgid "Ticket #%s does not exist"
-msgstr "Карточка #%s не существует"
+msgid "Ticket #%(id)s does not exist"
+msgstr "Карточка #%(id)s не существует"
 
-#: tracsubtickets/api.py:196
+#: api.py:236
 #, python-format
-msgid "Circularity error: %s"
-msgstr "Ошибка закольцовывания: %s"
+msgid "Circularity error: %(e)s"
+msgstr "Ошибка закольцовывания: %(e)s"
 
-#: tracsubtickets/api.py:205 tracsubtickets/web_ui.py:129
+#: api.py:250
 #, python-format
-msgid "Parent ticket #%s is closed"
-msgstr "Карточка родитель #%s закрыта"
-
-#: tracsubtickets/api.py:216
-msgid "Not a valid list of ticket IDs"
+msgid ""
+"Cannot modify ticket because \n"
+"                            parent ticket #%(id)s is closed. \n"
+"                            Comments allowed, though."
+msgstr ""
+"Нельзя изменить карточку, так как \n"
+"                                 карточка родитель #%(id)s закрыта. \n"
+"                                 Тем не менее комментарии разрешены."
+#: api.py:266
+msgid "Not a valid list of ticket IDs."
 msgstr "Недопустимый список идентификаторов карточек"
 
-#: tracsubtickets/web_ui.py:123
-#, python-format
-msgid "Child ticket #%s has not been closed yet"
-msgstr "Подкарточка #%s не закрыта"
+#: web_ui.py:55
+msgid ""
+"\n"
+"         Normally, reopening a child with a `closed` parent will be\n"
+"         refused and closing a parent with non-`closed` children will "
+"also\n"
+"         be refused. Adding either of `reopen` or `resolve` to this "
+"option will\n"
+"         make Subtickets skip this validation for the respective action.\n"
+"         Separate by comma if both actions are listed.\n"
+"\n"
+"         Caveat: This functionality will be made workflow-independent in "
+"a \n"
+"         future release of !SubTicketsPlugin.\n"
+"         "
+msgstr ""
+"\n"
+"         Обычно, запрещается переоткрытие подкарточки с закрытой карточкой \n"
+"         родителем и закрытой карточки родителя с незакрытой подкарточкой \n"
+"         Добавление опции `reopen` или `resolve` пропустит эту проверку.\n"
+"         В качестве разделителя опций используется запятая.\n"
+"\n"
+"         Внимание: В будущих версиях !SubTicketsPlugin эта функция \n"
+"         будет сделана workflow-независимой.\n"
+"         "
 
-#: tracsubtickets/web_ui.py:141
+#: web_ui.py:69
+msgid ""
+"\n"
+"         Limit the number of recursive levels when listing subtickets. \n"
+"         Default is infinity, represented by`-1`. The value zero (0)\n"
+"         limits the listing to immediate children.\n"
+"         "
+msgstr ""
+"\n"
+"         Ограничение количества рекурсивных уровней при выводе подкарточек. \n"
+"         По умолчанию при `-1` не ограничивается. При нулевом значении (0)\n"
+"         вывод ограничивается только подчинёнными подкарточками.\n"
+"         "
+
+#: web_ui.py:77
+msgid ""
+"\n"
+"         Choose whether to make `Add` look like a button (default) or a "
+"link\n"
+"         "
+msgstr ""
+"\n"
+"         Выбор отображения `Добавить` как кнопка (по умолчанию) или как "
+"ссылка\n"
+"         "
+
+#: web_ui.py:83
+msgid ""
+"\n"
+"                           Currently undocumented.\n"
+"                           "
+msgstr ""
+"\n"
+"                           В настоящее время не задокументировано.\n"
+"                           "
+
+#: web_ui.py:97
+msgid ""
+"\n"
+"             Comma-separated list of ticket fields whose values are\n"
+"             to be copied from a parent ticket into a newly created\n"
+"             child ticket\n"
+"             "
+msgstr ""
+"\n"
+"             Разделённый запятыми список полей карточки, значения \n"
+"             которых должны быть скопированы из карточки родителя \n"
+"             в вновь созданную подкарточку\n"
+"             "
+
+#: web_ui.py:106
+msgid ""
+"\n"
+"             Comma-separated list of ticket fields whose values are to be"
+"\n"
+"             shown for each child ticket in the subtickets list\n"
+"             "
+msgstr ""
+"\n"
+"             Разделённый запятыми список полей карточки, значения которых"
+"\n"
+"             должны будут выведены в списке подкарточек\n"
+
+#: web_ui.py:206
+#, python-format
+msgid ""
+"Cannot close/resolve because child \n"
+"                         ticket #%(child)s is still open"
+msgstr ""
+"Невозможо закрыть/решить, потому что \n"
+"                         подкарточка #%(child)s остаётся рткрытой"
+
+#: web_ui.py:215
+#, python-format
+msgid "Cannot reopen because parent ticket #%(id)s is closed"
+msgstr "Не возможно переоткрыть, потому что карточка родитель #%(id)s закрыта"
+
+#: web_ui.py:283
 msgid "add"
 msgstr "добавить"
 
-#: tracsubtickets/web_ui.py:143
-msgid "Create new child ticket"
-msgstr "Создать новую подкарточку"
+#: web_ui.py:293
+msgid "Create"
+msgstr "Создать"
 
-#: tracsubtickets/web_ui.py:147
+#: web_ui.py:294
+msgid "Create a child ticket"
+msgstr "Создать подкарточку"
+
+#: web_ui.py:302
 msgid "Subtickets "
 msgstr "Подкарточки "
 

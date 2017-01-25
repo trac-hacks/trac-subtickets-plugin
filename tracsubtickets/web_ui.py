@@ -280,7 +280,7 @@ class SubTicketsModule(Component):
                                                       'type.%(type)s.child_inherits' % ticket)
                 if self.opt_add_style == 'link':
                     inh  = {f: ticket[f] for f in opt_inherit}
-                    link = tag.a('add', 
+                    link = tag.a(_('add'), 
                                  href=req.href.newticket(parents=ticket.id, 
                                                          **inh))
                     link = tag.span('(', link, ')', class_='addsubticket')
@@ -290,8 +290,8 @@ class SubTicketsModule(Component):
                                      value = ticket[f]) for f in opt_inherit]
 
                     button = tag.form(tag.div(tag.input(type="submit", 
-                                                        value="Create", 
-                                                        title="Create a child ticket"),
+                                                        value=_("Create"), 
+                                                        title=_("Create a child ticket")),
                                               inh,
                                               tag.input(type="hidden", 
                                                         name="parents", 
