@@ -30,6 +30,22 @@
 
 from setuptools import find_packages, setup
 
+extra = {}
+
+try:
+    from trac.util.dist  import  get_l10n_cmdclass
+    cmdclass = get_l10n_cmdclass()
+    if cmdclass:
+        extra['cmdclass'] = cmdclass
+        extractors = [
+            ('**.py',                'python', None),
+        ]
+        extra['message_extractors'] = {'tracsubtickets': extractors}
+# i18n is implemented to be optional here.
+except ImportError:
+    pass
+
+
 setup(
     name = 'TracSubTicketsPlugin',
     version = '0.5.1',
@@ -53,8 +69,7 @@ setup(
     package_data = {
         'tracsubtickets': [
             'htdocs/css/*.css',
-            'locale/*.*',
-            'locale/*/LC_MESSAGES/*.*',
+            'locale/*/LC_MESSAGES/*.mo',
         ],
     },
     entry_points = {
@@ -66,4 +81,6 @@ setup(
             'check-trac-subtickets = tracsubtickets.checker:main',
         ],
     },
+    
+     **extra
 )
