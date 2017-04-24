@@ -61,10 +61,10 @@ class SubTicketsSystem(Component):
                ITicketManipulator)
 
     opt_no_modif_w_p_c = BoolOption \
-        ('subtickets', 'no_modif_when_parent_closed', default='false', 
+        ('subtickets', 'no_modif_when_parent_closed', default='false',
          doc = _("""
          If `True`, any modification of a child whose parent is `closed`
-         will be blocked. If `False`, status changes will be blocked as 
+         will be blocked. If `False`, status changes will be blocked as
          controlled by the setting of `skip_closure_validation`.
 
          For compatibility with plugin versions prior to 0.5 that blocked
@@ -76,8 +76,12 @@ class SubTicketsSystem(Component):
         self._version = None
         self.ui = None
         # bind the 'traccsubtickets' catalog to the locale directory
-        locale_dir = pkg_resources.resource_filename(__name__, 'locale')
-        add_domain(self.env.path, locale_dir)
+        try:
+            locale_dir = pkg_resources.resource_filename(__name__, 'locale')
+        except KeyError:
+            pass
+        else:
+            add_domain(self.env.path, locale_dir)
 
     # IEnvironmentSetupParticipant methods
     def environment_created(self):
@@ -219,7 +223,7 @@ class SubTicketsSystem(Component):
                         """, (id, ))
                     if not tkt_id:
                         invalid_ids.add(id)
-                        yield 'parents', _("Ticket #%(id)s does not exist", 
+                        yield 'parents', _("Ticket #%(id)s does not exist",
                                            id=id)
 
             # circularity check function
@@ -240,15 +244,15 @@ class SubTicketsSystem(Component):
                 return errors
 
             for x in [i for i in _ids if i not in invalid_ids]:
-                # Refuse modification if parent closed 
+                # Refuse modification if parent closed
                 # or if parentship is to be made circular
                 try:
                     parent = Ticket(self.env, x)
                     if parent and parent['status'] == 'closed' \
                        and self.opt_no_modif_w_p_c:
                         invalid_ids.add(x)
-                        yield None, _("""Cannot modify ticket because 
-                            parent ticket #%(id)s is closed. 
+                        yield None, _("""Cannot modify ticket because
+                            parent ticket #%(id)s is closed.
                             Comments allowed, though.""",
                             id=x)
                     # check circularity
