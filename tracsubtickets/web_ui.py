@@ -211,7 +211,7 @@ class SubTicketsModule(Component):
             ids = set(NUMBERS_RE.findall(ticket['parents'] or ''))
             for id in ids:
                 if Ticket(self.env, id)['status'] == 'closed':
-                    yield None,
+                    yield None, \
                     _("Cannot reopen because parent ticket #%(id)s is closed",
                       id=id)
 
