@@ -310,7 +310,14 @@ class SubTicketsModule(Component):
 
         if div:
             add_stylesheet(req, 'subtickets/css/subtickets.css')
-            stream |= Transformer('.//div[@id="ticket"]').append(div)
+            '''
+            If rendered in preview mode, DIV we're interested in isn't a child
+            but the root and transformation won't succeed.
+            According to HTML specification, id's must be unique within a
+            document, so it's safe to omit the leading '.' in XPath expression
+            to select all matching regardless of hierarchy their in. 
+            '''
+            stream |= Transformer('//div[@id="ticket"]').append(div)
 
         return stream
 
