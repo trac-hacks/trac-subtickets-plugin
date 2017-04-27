@@ -48,7 +48,7 @@ except ImportError:
 
 setup(
     name = 'TracSubTicketsPlugin',
-    version = '0.5.2',
+    version = '0.5.3',
     keywords = 'trac plugin ticket subticket',
     author = 'Takashi Ito',
     author_email = 'TakashiC.Ito@gmail.com',
@@ -81,6 +81,6 @@ setup(
             'check-trac-subtickets = tracsubtickets.checker:main',
         ],
     },
-    
+
      **extra
 )
