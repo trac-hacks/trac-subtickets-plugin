@@ -179,7 +179,7 @@ class SubTicketsSystem(Component):
                     """, (parent, ticket.id))
                 # add a comment to old parent
                 xticket = Ticket(self.env, parent)
-                xticket.save_changes(author, _('Remove a subticket #%s.') % ticket.id)
+                xticket.save_changes(author, _('Remove a subticket #%s (%s).') % (ticket.id, ticket['summary']))
                 tn = TicketNotifyEmail(self.env)
                 tn.notify(xticket, newticket=False, modtime=xticket['changetime'])
 
@@ -191,7 +191,7 @@ class SubTicketsSystem(Component):
                     """, (parent, ticket.id))
                 # add a comment to new parent
                 xticket = Ticket(self.env, parent)
-                xticket.save_changes(author, _('Add a subticket #%s.') % ticket.id)
+                xticket.save_changes(author, _('Add a subticket #%s (%s).') % (ticket.id, ticket['summary']))
                 tn = TicketNotifyEmail(self.env)
                 tn.notify(xticket, newticket=False, modtime=xticket['changetime'])
 
