@@ -1,4 +1,4 @@
-#!/usr/bin/python
+# -*- coding: utf-8 -*-
 #
 # Copyright (c) 2010, Takashi Ito
 # All rights reserved.
@@ -32,9 +32,8 @@ from trac.db import Table, Column
 name = 'subtickets'
 version = 2
 tables = [
-    Table(name, key=('parent','child'))[
+    Table(name, key=('parent', 'child'))[
         Column('parent', type='int'),
         Column('child', type='int'),
     ],
 ]
-

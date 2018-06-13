@@ -1,4 +1,4 @@
-#!/usr/bin/python
+# -*- coding: utf-8 -*-
 #
 # Copyright (c) 2010, Takashi Ito
 # All rights reserved.
@@ -316,7 +316,7 @@ class SubTicketsModule(Component):
             but the root and transformation won't succeed.
             According to HTML specification, id's must be unique within a
             document, so it's safe to omit the leading '.' in XPath expression
-            to select all matching regardless of hierarchy their in. 
+            to select all matching regardless of hierarchy their in.
             '''
             stream |= Transformer('//div[@id="ticket"]').append(div)
 
