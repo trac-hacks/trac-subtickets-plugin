@@ -33,15 +33,20 @@ import pkg_resources
 
 from trac.config import Option, BoolOption, IntOption, ChoiceOption, ListOption
 from trac.core import *
-from trac.env import IEnvironmentSetupParticipant
 from trac.db import DatabaseManager
+from trac.env import IEnvironmentSetupParticipant
 from trac.resource import ResourceNotFound
-from trac.ticket.model import Ticket
 from trac.ticket.api import ITicketChangeListener, ITicketManipulator
-from trac.ticket.notification import TicketNotifyEmail
-
+from trac.ticket.model import Ticket
+from trac.util.text import exception_to_unicode
 from trac.util.translation import domain_functions
-
+try:
+    TicketNotifyEmail = None
+    from trac.notification.api import NotificationSystem
+    from trac.ticket.notification import TicketChangeEvent
+except ImportError:
+    NotificationSystem = TicketChangeEvent = None
+    from trac.ticket.notification import TicketNotifyEmail
 
 import db_default
 
@@ -169,30 +174,25 @@ class SubTicketsSystem(Component):
             return
 
         with self.env.db_transaction as db:
-            cursor = db.cursor()
-
             # remove old parents
             for parent in old_parents - new_parents:
-                cursor.execute("""
+                db("""
                     DELETE FROM subtickets WHERE parent=%s AND child=%s
                     """, (parent, ticket.id))
                 # add a comment to old parent
                 xticket = Ticket(self.env, parent)
                 xticket.save_changes(author, _('Remove a subticket #%s (%s).') % (ticket.id, ticket['summary']))
-                tn = TicketNotifyEmail(self.env)
-                tn.notify(xticket, newticket=False, modtime=xticket['changetime'])
-
+                self.send_notification(xticket, author)
 
             # add new parents
             for parent in new_parents - old_parents:
-                cursor.execute("""
+                db("""
                     INSERT INTO subtickets VALUES(%s, %s)
                     """, (parent, ticket.id))
                 # add a comment to new parent
                 xticket = Ticket(self.env, parent)
                 xticket.save_changes(author, _('Add a subticket #%s (%s).') % (ticket.id, ticket['summary']))
-                tn = TicketNotifyEmail(self.env)
-                tn.notify(xticket, newticket=False, modtime=xticket['changetime'])
+                self.send_notification(xticket, author)
 
     def ticket_deleted(self, ticket):
         with self.env.db_transaction as db:
@@ -267,3 +267,17 @@ class SubTicketsSystem(Component):
             import traceback
             self.log.error(traceback.format_exc())
             yield 'parents', _('Not a valid list of ticket IDs.')
+
+    def send_notification(self, ticket, author):
+        if TicketNotifyEmail:
+            tn = TicketNotifyEmail(self.env)
+            tn.notify(ticket, newticket=False, modtime=ticket['changetime'])
+        else:
+            event = TicketChangeEvent('changed', ticket, ticket['changetime'],
+                                      author)
+            try:
+                NotificationSystem(self.env).notify(event)
+            except Exception as e:
+                self.log.error("Failure sending notification on change to "
+                               "ticket #%s: %s",
+                               ticket.id, exception_to_unicode(e))
