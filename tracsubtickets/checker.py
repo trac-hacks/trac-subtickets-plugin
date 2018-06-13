@@ -29,6 +29,7 @@
 
 import sys
 from optparse import OptionParser
+
 from trac.env import open_environment
 
 from api import NUMBERS_RE
@@ -94,4 +95,3 @@ def main(args=sys.argv[1:]):
 
 if __name__ == '__main__':
     main()
-

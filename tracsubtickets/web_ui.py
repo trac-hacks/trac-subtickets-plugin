@@ -31,14 +31,15 @@ from trac.config import Option, IntOption, ChoiceOption, ListOption
 from trac.core import *
 from trac.web.api import IRequestFilter, ITemplateStreamFilter
 from trac.web.chrome import ITemplateProvider, add_stylesheet
+from trac.util.html import html as tag
 from trac.ticket.api import ITicketManipulator
 from trac.ticket.model import Ticket
 from trac.ticket.model import Type as TicketType
 from trac.resource import ResourceNotFound
-from genshi.builder import tag
 from genshi.filters import Transformer
 
 from api import NUMBERS_RE, _
+
 
 class SubTicketsModule(Component):
 
@@ -320,4 +321,3 @@ class SubTicketsModule(Component):
             stream |= Transformer('//div[@id="ticket"]').append(div)
 
         return stream
-

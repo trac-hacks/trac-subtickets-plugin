@@ -268,4 +268,3 @@ class SubTicketsSystem(Component):
             import traceback
             self.log.error(traceback.format_exc())
             yield 'parents', _('Not a valid list of ticket IDs.')
-
