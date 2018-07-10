@@ -39,7 +39,8 @@ def check_subtickets(db):
     cursor = db.cursor()
 
     cfield = {}
-    cursor.execute("SELECT ticket, value FROM ticket_custom WHERE name='parents'")
+    cursor.execute(
+        "SELECT ticket, value FROM ticket_custom WHERE name='parents'")
     for row in cursor:
         id = row[0]
         parents = [int(x) for x in NUMBERS_RE.findall(row[1])]

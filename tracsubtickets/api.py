@@ -31,8 +31,8 @@ import re
 
 import pkg_resources
 
-from trac.config import Option, BoolOption, IntOption, ChoiceOption, ListOption
-from trac.core import *
+from trac.config import BoolOption
+from trac.core import Component, implements
 from trac.db import DatabaseManager
 from trac.env import IEnvironmentSetupParticipant
 from trac.resource import ResourceNotFound
@@ -56,7 +56,7 @@ NUMBERS_RE = re.compile(r'\d+', re.U)
 # i18n support for plugins, available since Trac r7705
 # use _, tag_ and N_ as usual, e.g. _("this is a message text")
 _, tag_, N_, add_domain = domain_functions('tracsubtickets',
-    '_', 'tag_', 'N_', 'add_domain')
+                                           '_', 'tag_', 'N_', 'add_domain')
 
 
 class SubTicketsSystem(Component):
@@ -65,17 +65,15 @@ class SubTicketsSystem(Component):
                ITicketChangeListener,
                ITicketManipulator)
 
-    opt_no_modif_w_p_c = BoolOption \
-        ('subtickets', 'no_modif_when_parent_closed', default='false',
-         doc = _("""
-         If `True`, any modification of a child whose parent is `closed`
-         will be blocked. If `False`, status changes will be blocked as
-         controlled by the setting of `skip_closure_validation`.
+    opt_no_modif_w_p_c = BoolOption(
+        'subtickets', 'no_modif_when_parent_closed', default='false',
+        doc=_("""If `True`, any modification of a child whose parent is `closed`
+        will be blocked. If `False`, status changes will be blocked as
+        controlled by the setting of `skip_closure_validation`.
 
-         For compatibility with plugin versions prior to 0.5 that blocked
-         any modification unconditionally.
-         """)
-         )
+        For compatibility with plugin versions prior to 0.5 that blocked
+        any modification unconditionally.
+        """))
 
     def __init__(self):
         self._version = None
@@ -89,6 +87,7 @@ class SubTicketsSystem(Component):
             add_domain(self.env.path, locale_dir)
 
     # IEnvironmentSetupParticipant methods
+
     def environment_created(self):
         self.found_db_version = 0
         self.upgrade_environment()
@@ -117,7 +116,7 @@ class SubTicketsSystem(Component):
 
         # update the version
         with self.env.db_transaction as db:
-            old_data = {} # {table.name: (cols, rows)}
+            old_data = {}  # {table.name: (cols, rows)}
             cursor = db.cursor()
             if not self.found_db_version:
                 cursor.execute("""
@@ -147,7 +146,8 @@ class SubTicketsSystem(Component):
                     cols, rows = old_data[table.name]
                     sql = """
                         INSERT INTO %s (%s) VALUES (%s)
-                        """ % (table.name, ','.join(cols), ','.join(['%s'] * len(cols)))
+                        """ % (table.name, ','.join(cols),
+                               ','.join(['%s'] * len(cols)))
                     for row in rows:
                         cursor.execute(sql, row)
 
@@ -159,6 +159,7 @@ class SubTicketsSystem(Component):
                 self.config.save()
 
     # ITicketChangeListener methods
+
     def ticket_created(self, ticket):
         self.ticket_changed(ticket, '', ticket['reporter'], {'parents': ''})
 
@@ -181,7 +182,10 @@ class SubTicketsSystem(Component):
                     """, (parent, ticket.id))
                 # add a comment to old parent
                 xticket = Ticket(self.env, parent)
-                xticket.save_changes(author, _('Remove a subticket #%s (%s).') % (ticket.id, ticket['summary']))
+                xticket.save_changes(
+                    author,
+                    _('Remove a subticket #%(id)s (%(summary)s).',
+                      id=ticket.id, summary=ticket['summary']))
                 self.send_notification(xticket, author)
 
             # add new parents
@@ -191,7 +195,8 @@ class SubTicketsSystem(Component):
                     """, (parent, ticket.id))
                 # add a comment to new parent
                 xticket = Ticket(self.env, parent)
-                xticket.save_changes(author, _('Add a subticket #%s (%s).') % (ticket.id, ticket['summary']))
+                xticket.save_changes(author, _('Add a subticket #%s (%s).') % (
+                    ticket.id, ticket['summary']))
                 self.send_notification(xticket, author)
 
     def ticket_deleted(self, ticket):
@@ -203,6 +208,7 @@ class SubTicketsSystem(Component):
                 """, (ticket.id, ))
 
     # ITicketManipulator methods
+
     def prepare_ticket(self, req, ticket, fields, actions):
         pass
 
@@ -235,7 +241,8 @@ class SubTicketsSystem(Component):
                 for x in [int(x[0]) for x in parents]:
                     if x in all_parents:
                         invalid_ids.add(x)
-                        error = ' > '.join(['#%s' % n for n in all_parents+[x]])
+                        error = ' > '.join(
+                            '#%s' % n for n in all_parents + [x])
                         errors.append(('parents', _('Circularity error: %(e)s',
                                                     e=error)))
                     else:
@@ -253,17 +260,18 @@ class SubTicketsSystem(Component):
                         yield None, _("""Cannot modify ticket because
                             parent ticket #%(id)s is closed.
                             Comments allowed, though.""",
-                            id=x)
+                                      id=x)
                     # check circularity
                     all_parents = ticket.id and [ticket.id] or []
                     for error in _check_parents(int(x), all_parents):
                         yield error
-                except ResourceNotFound, e:
+                except ResourceNotFound:
                     invalid_ids.add(x)
 
             valid_ids = _ids.difference(invalid_ids)
-            ticket['parents'] = valid_ids and ', '.join(sorted(valid_ids, key=lambda x: int(x))) or ''
-        except Exception, e:
+            ticket['parents'] = valid_ids and ', '.join(
+                sorted(valid_ids, key=lambda x: int(x))) or ''
+        except Exception:
             import traceback
             self.log.error(traceback.format_exc())
             yield 'parents', _('Not a valid list of ticket IDs.')

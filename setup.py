@@ -34,12 +34,12 @@ from setuptools import find_packages, setup
 extra = {}
 
 try:
-    from trac.util.dist  import  get_l10n_cmdclass
+    from trac.util.dist import get_l10n_cmdclass
     cmdclass = get_l10n_cmdclass()
     if cmdclass:
         extra['cmdclass'] = cmdclass
         extractors = [
-            ('**.py',                'python', None),
+            ('**.py', 'python', None),
         ]
         extra['message_extractors'] = {'tracsubtickets': extractors}
 # i18n is implemented to be optional here.
@@ -48,32 +48,32 @@ except ImportError:
 
 
 setup(
-    name = 'TracSubTicketsPlugin',
-    version = '0.5.4',
-    keywords = 'trac plugin ticket subticket',
-    author = 'Takashi Ito',
-    author_email = 'TakashiC.Ito@gmail.com',
-    maintainer = 'Theodor Norup',
-    maintainer_email = 'theodor.norup@gmail.com',
-    url = 'http://github.com/trac-hacks/trac-subtickets-plugin',
-    description = 'Trac Sub-Tickets Plugin',
-    long_description = """
+    name='TracSubTicketsPlugin',
+    version='0.5.4',
+    keywords='trac plugin ticket subticket',
+    author='Takashi Ito',
+    author_email='TakashiC.Ito@gmail.com',
+    maintainer='Theodor Norup',
+    maintainer_email='theodor.norup@gmail.com',
+    url='http://github.com/trac-hacks/trac-subtickets-plugin',
+    description='Trac Sub-Tickets Plugin',
+    long_description="""
     This plugin for Trac 1.0 and later provides Sub-Tickets functionality.
 
     The association is done by adding parent tickets' number to a custom field.
     Checks ensure i.e. resolving of sub-tickets before closing the parent.
     Babel is required to display localized texts.
     """,
-    license = 'BSD',
+    license='BSD',
 
-    packages = find_packages(exclude=['*.tests*']),
-    package_data = {
+    packages=find_packages(exclude=['*.tests*']),
+    package_data={
         'tracsubtickets': [
             'htdocs/css/*.css',
             'locale/*/LC_MESSAGES/*.mo',
         ],
     },
-    entry_points = {
+    entry_points={
         'trac.plugins': [
             'tracsubtickets.api = tracsubtickets.api',
             'tracsubtickets.web_ui = tracsubtickets.web_ui',
@@ -83,5 +83,5 @@ setup(
         ],
     },
 
-     **extra
+    **extra
 )

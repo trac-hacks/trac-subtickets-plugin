@@ -28,7 +28,7 @@
 # POSSIBILITY OF SUCH DAMAGE.
 
 from trac.config import Option, IntOption, ChoiceOption, ListOption
-from trac.core import *
+from trac.core import Component, implements
 from trac.web.api import IRequestFilter, ITemplateStreamFilter
 from trac.web.chrome import ITemplateProvider, add_stylesheet
 from trac.util.html import html as tag
@@ -43,17 +43,13 @@ from api import NUMBERS_RE, _
 
 class SubTicketsModule(Component):
 
-    implements(ITemplateProvider,
-               IRequestFilter,
-               ITicketManipulator,
+    implements(IRequestFilter, ITicketManipulator, ITemplateProvider,
                ITemplateStreamFilter)
 
-    ### Simple Options
+    # Simple Options
 
-    opt_skip_validation = ListOption \
-        ('subtickets', 'skip_closure_validation',
-         default=[],
-         doc = _("""
+    opt_skip_validation = ListOption(
+        'subtickets', 'skip_closure_validation', default=[], doc=_("""
          Normally, reopening a child with a `closed` parent will be
          refused and closing a parent with non-`closed` children will also
          be refused. Adding either of `reopen` or `resolve` to this option will
@@ -62,56 +58,47 @@ class SubTicketsModule(Component):
 
          Caveat: This functionality will be made workflow-independent in a
          future release of !SubTicketsPlugin.
-         """)
-         )
+         """))
 
-    opt_recursion_depth = IntOption \
-        ('subtickets', 'recursion_depth', default=-1,
-         doc = _("""
+    opt_recursion_depth = IntOption(
+        'subtickets', 'recursion_depth', default=-1, doc=_("""
          Limit the number of recursive levels when listing subtickets.
          Default is infinity, represented by`-1`. The value zero (0)
          limits the listing to immediate children.
-         """)
-         )
-    opt_add_style = ChoiceOption \
-        ('subtickets', 'add_style', ['button', 'link'],
-         doc = _("""
+         """))
+
+    opt_add_style = ChoiceOption('subtickets', 'add_style', ['button', 'link'],
+                                 doc=_("""
          Choose whether to make `Add` look like a button (default) or a link
          """)
-         )
+                                 )
 
     opt_owner_url = Option('subtickets', 'owner_url',
-                           doc = _("""
+                           doc=_("""
                            Currently undocumented.
                            """)
                            )
 
-    ### Per-ticket type options -- all initialised in __init__()
+    # Per-ticket type options -- all initialised in __init__()
 
     opt_inherit_fields = dict()
     opt_columns = dict()
 
     def _add_per_ticket_type_option(self, ticket_type):
-        self.opt_inherit_fields[ticket_type] = ListOption \
-            ('subtickets','type.%s.child_inherits' % ticket_type,
-             default='',
-             doc = _("""
-             Comma-separated list of ticket fields whose values are
-             to be copied from a parent ticket into a newly created
-             child ticket
-             """)
-             )
-        self.opt_columns[ticket_type] = ListOption \
-            ('subtickets', 'type.%s.table_columns' % ticket_type,
-             default='status,owner',
-             doc = _("""
+
+        self.opt_inherit_fields[ticket_type] = ListOption(
+            'subtickets', 'type.%s.child_inherits' % ticket_type, default='',
+            doc=_("""Comma-separated list of ticket fields whose values are
+            to be copied from a parent ticket into a newly created
+            child ticket.
+            """))
+
+        self.opt_columns[ticket_type] = ListOption(
+            'subtickets', 'type.%s.table_columns' % ticket_type,
+            default='status,owner', doc=_("""
              Comma-separated list of ticket fields whose values are to be
              shown for each child ticket in the subtickets list
-             """)
-             )
-
-
-    ###
+             """))
 
     def __init__(self):
         # The following initialisations must happen inside init()
@@ -120,6 +107,7 @@ class SubTicketsModule(Component):
             self._add_per_ticket_type_option(tt.name)
 
     # ITemplateProvider methods
+
     def get_htdocs_dirs(self):
         from pkg_resources import resource_filename
         return [('subtickets', resource_filename(__name__, 'htdocs'))]
@@ -128,6 +116,7 @@ class SubTicketsModule(Component):
         return []
 
     # IRequestFilter methods
+
     def pre_process_request(self, req, handler):
         return handler
 
@@ -168,13 +157,14 @@ class SubTicketsModule(Component):
                 if len(links) > 0:
                     links.append(', ')
                 links.append(elem)
-            except ResourceNotFound, e:
+            except ResourceNotFound:
                 pass
         for field in data.get('fields', ''):
             if field.get('name') == 'parents':
                 field['rendered'] = tag.span(*links)
 
     # ITicketManipulator methods
+
     def prepare_ticket(self, req, ticket, fields, actions):
         pass
 
@@ -182,8 +172,8 @@ class SubTicketsModule(Component):
         children = {}
 
         for parent, child in self.env.db_query("""
-            SELECT parent, child FROM subtickets WHERE parent=%s
-            """, (parent_id, )):
+                SELECT parent, child FROM subtickets WHERE parent=%s
+                """, (parent_id, )):
             children[child] = None
 
         if self.opt_recursion_depth > depth or self.opt_recursion_depth == -1:
@@ -201,8 +191,8 @@ class SubTicketsModule(Component):
         if action == 'resolve':
 
             for parent, child in self.env.db_query("""
-                SELECT parent, child FROM subtickets WHERE parent=%s
-                """, (ticket.id, )):
+                    SELECT parent, child FROM subtickets WHERE parent=%s
+                    """, (ticket.id, )):
                 if Ticket(self.env, child)['status'] != 'closed':
                     yield None, _("""Cannot close/resolve because child
                          ticket #%(child)s is still open""",
@@ -212,9 +202,9 @@ class SubTicketsModule(Component):
             ids = set(NUMBERS_RE.findall(ticket['parents'] or ''))
             for id in ids:
                 if Ticket(self.env, id)['status'] == 'closed':
-                    yield None, \
-                    _("Cannot reopen because parent ticket #%(id)s is closed",
-                      id=id)
+                    msg = _("Cannot reopen because parent ticket #%(id)s "
+                            "is closed", id=id)
+                    yield None, msg
 
     # ITemplateStreamFilter method
 
@@ -234,14 +224,14 @@ class SubTicketsModule(Component):
                 attrs['class_'] = 'closed'
             link = tag.a('#%s' % id, **attrs)
             summary = tag.td(link, ': %s' % ticket['summary'],
-                style='padding-left: %dpx;' % (depth * 15))
+                             style='padding-left: %dpx;' % (depth * 15))
             r.append(summary)
 
             # Add other columns as configured.
-            for column in self.env.config.getlist( \
-                          'subtickets',
-                          'type.%(type)s.table_columns' % ticket,
-                          ):
+            for column in \
+                    self.env.config.getlist('subtickets',
+                                            'type.%(type)s.table_columns'
+                                            % ticket):
                 if column == 'owner':
                     if self.opt_owner_url:
                         href = req.href(self.opt_owner_url % ticket['owner'])
@@ -261,13 +251,12 @@ class SubTicketsModule(Component):
 
             self._create_subtickets_table(req, children[id], tbody, depth + 1)
 
-
     def filter_stream(self, req, method, filename, stream, data):
         if not req.path_info.startswith('/ticket/'):
             return stream
 
-        div    = None
-        link   = None
+        div = None
+        link = None
         button = None
 
         if 'ticket' in data:
@@ -277,28 +266,30 @@ class SubTicketsModule(Component):
             div = tag.div(class_='description')
             if 'TICKET_CREATE' in req.perm(ticket.resource) \
                     and ticket['status'] != 'closed':
-                opt_inherit = self.env.config.getlist('subtickets',
-                                                      'type.%(type)s.child_inherits' % ticket)
+                opt_inherit = self.env.config.getlist(
+                    'subtickets', 'type.%(type)s.child_inherits' % ticket)
                 if self.opt_add_style == 'link':
-                    inh  = {f: ticket[f] for f in opt_inherit}
+                    inh = {f: ticket[f] for f in opt_inherit}
                     link = tag.a(_('add'),
                                  href=req.href.newticket(parents=ticket.id,
                                                          **inh))
                     link = tag.span('(', link, ')', class_='addsubticket')
                 else:
-                    inh = [tag.input(type  = 'hidden',
-                                     name  = f,
-                                     value = ticket[f]) for f in opt_inherit]
+                    inh = [tag.input(type='hidden',
+                                     name=f,
+                                     value=ticket[f]) for f in opt_inherit]
 
-                    button = tag.form(tag.div(tag.input(type="submit",
-                                                        value=_("Create"),
-                                                        title=_("Create a child ticket")),
-                                              inh,
-                                              tag.input(type="hidden",
-                                                        name="parents",
-                                                        value=str(ticket.id)),
-                                              class_="inlinebuttons"),
-                                      method="get", action=req.href.newticket())
+                    button = tag.form(
+                        tag.div(
+                            tag.input(type="submit",
+                                      value=_("Create"),
+                                      title=_("Create a child ticket")),
+                            inh,
+                            tag.input(type="hidden",
+                                      name="parents",
+                                      value=str(ticket.id)),
+                            class_="inlinebuttons"),
+                        method="get", action=req.href.newticket())
             div.append(button)
             div.append(tag.h3(_('Subtickets '), link))
 
