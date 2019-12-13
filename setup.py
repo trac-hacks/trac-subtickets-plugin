@@ -66,6 +66,7 @@ setup(
     """,
     license='BSD',
 
+    classifiers=['Framework :: Trac'],
     packages=find_packages(exclude=['*.tests*']),
     package_data={
         'tracsubtickets': [
