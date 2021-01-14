@@ -95,8 +95,8 @@ class SubTicketsSystem(Component):
     def environment_needs_upgrade(self, db=None):
         with self.env.db_query as db:
             for value, in db("""
-                    SELECT value FROM system WHERE name=%s
-                    """, (db_default.name,)):
+                    SELECT value FROM {0} WHERE name=%s
+                    """.format(db.quote('system')), (db_default.name,)):
                 self.found_db_version = int(value)
                 if self.found_db_version < db_default.version:
                     return True
@@ -105,11 +105,11 @@ class SubTicketsSystem(Component):
                 self.found_db_version = 0
                 return True
 
-            # check the custom field
-            if 'parents' not in self.config['ticket-custom']:
-                return True
+        # check the custom field
+        if 'parents' not in self.config['ticket-custom']:
+            return True
 
-            return False
+        return False
 
     def upgrade_environment(self, db=None):
         db_manager = DatabaseManager(self.env).get_connector()[0]
