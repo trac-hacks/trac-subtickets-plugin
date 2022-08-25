@@ -29,22 +29,20 @@
 
 from trac.config import Option, IntOption, ChoiceOption, ListOption
 from trac.core import Component, implements
-from trac.web.api import IRequestFilter, ITemplateStreamFilter
-from trac.web.chrome import ITemplateProvider, add_stylesheet
+from trac.web.api import IRequestFilter
+from trac.web.chrome import ITemplateProvider, add_stylesheet, add_script, add_script_data
 from trac.util.html import html as tag
 from trac.ticket.api import ITicketManipulator
 from trac.ticket.model import Ticket
 from trac.ticket.model import Type as TicketType
 from trac.resource import ResourceNotFound
-from genshi.filters import Transformer
 
 from api import NUMBERS_RE, _
 
 
 class SubTicketsModule(Component):
 
-    implements(IRequestFilter, ITicketManipulator, ITemplateProvider,
-               ITemplateStreamFilter)
+    implements(IRequestFilter, ITicketManipulator, ITemplateProvider)
 
     # Simple Options
 
@@ -110,7 +108,7 @@ class SubTicketsModule(Component):
 
     def get_htdocs_dirs(self):
         from pkg_resources import resource_filename
-        return [('subtickets', resource_filename(__name__, 'htdocs'))]
+        yield 'subtickets', resource_filename(__name__, 'htdocs')
 
     def get_templates_dirs(self):
         return []
@@ -142,6 +140,9 @@ class SubTicketsModule(Component):
                 and set(['add', 'name']).issubset(data.keys()) \
                 and data['add'] == 'Add':
             self._add_per_ticket_type_option(data['name'])
+
+        # append subtickets data (happended in filter_stream() before)
+        self._append_subtickets_data(req, data)
 
         return template, data, content_type
 
@@ -251,9 +252,9 @@ class SubTicketsModule(Component):
 
             self._create_subtickets_table(req, children[id], tbody, depth + 1)
 
-    def filter_stream(self, req, method, filename, stream, data):
+    def _append_subtickets_data(self, req, data):
         if not req.path_info.startswith('/ticket/'):
-            return stream
+            return
 
         div = None
         link = None
@@ -302,13 +303,5 @@ class SubTicketsModule(Component):
 
         if div:
             add_stylesheet(req, 'subtickets/css/subtickets.css')
-            '''
-            If rendered in preview mode, DIV we're interested in isn't a child
-            but the root and transformation won't succeed.
-            According to HTML specification, id's must be unique within a
-            document, so it's safe to omit the leading '.' in XPath expression
-            to select all matching regardless of hierarchy their in.
-            '''
-            stream |= Transformer('//div[@id="ticket"]').append(div)
-
-        return stream
+            add_script(req, 'subtickets/js/appendsubticketsdata.js')
+            add_script_data(req, content=str(div))

@@ -71,6 +71,7 @@ setup(
     package_data={
         'tracsubtickets': [
             'htdocs/css/*.css',
+            'htdocs/js/*.js',
             'locale/*/LC_MESSAGES/*.mo',
         ],
     },
