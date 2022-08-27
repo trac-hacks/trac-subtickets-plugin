@@ -3,4 +3,5 @@ dist
 *.pyc
 *.swp
 *.egg-info
+*.mo
 tags

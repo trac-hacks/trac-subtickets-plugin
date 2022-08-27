@@ -27,11 +27,12 @@
 # ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
 # POSSIBILITY OF SUCH DAMAGE.
 
+import json
 from trac.config import Option, IntOption, ChoiceOption, ListOption
 from trac.core import Component, implements
 from trac.web.api import IRequestFilter
 from trac.web.chrome import ITemplateProvider, add_stylesheet, add_script, add_script_data
-from trac.util.html import html as tag
+from trac.util.html import html as tag, escape
 from trac.ticket.api import ITicketManipulator
 from trac.ticket.model import Ticket
 from trac.ticket.model import Type as TicketType
@@ -209,7 +210,7 @@ class SubTicketsModule(Component):
 
     # ITemplateStreamFilter method
 
-    def _create_subtickets_table(self, req, children, tbody, depth=0):
+    def _create_subtickets_table(self, req, children, tbody, tdict, depth=0):
         """Recursively create list table of subtickets
         """
         if not children:
@@ -219,6 +220,7 @@ class SubTicketsModule(Component):
 
             # the row
             r = []
+            rdict = dict()
             # Always show ID and summary
             attrs = {'href': req.href.ticket(id)}
             if ticket['status'] == 'closed':
@@ -227,6 +229,7 @@ class SubTicketsModule(Component):
             summary = tag.td(link, ': %s' % ticket['summary'],
                              style='padding-left: %dpx;' % (depth * 15))
             r.append(summary)
+            rdict['summary'] = str(summary)
 
             # Add other columns as configured.
             for column in \
@@ -248,9 +251,11 @@ class SubTicketsModule(Component):
                 else:
                     e = tag.td(ticket[column])
                 r.append(e)
+                rdict[column] = str(e)
             tbody.append(tag.tr(*r))
+            tdict[id] = rdict
 
-            self._create_subtickets_table(req, children[id], tbody, depth + 1)
+            self._create_subtickets_table(req, children[id], tbody, tdict, depth + 1)
 
     def _append_subtickets_data(self, req, data):
         if not req.path_info.startswith('/ticket/'):
@@ -259,6 +264,12 @@ class SubTicketsModule(Component):
         div = None
         link = None
         button = None
+
+        # arguments we need in javascript
+        script_args = dict()
+        # common arguments
+        script_args['localized_separator_label'] = _('Subtickets ')
+        script_args['add_style'] = self.opt_add_style
 
         if 'ticket' in data:
             # get parents data
@@ -275,6 +286,10 @@ class SubTicketsModule(Component):
                                  href=req.href.newticket(parents=ticket.id,
                                                          **inh))
                     link = tag.span('(', link, ')', class_='addsubticket')
+
+                    # link-specific arguments
+                    script_args['href_req_newticket_with_parent'] = req.href.newticket(parents=ticket.id, **inh)
+                    script_args['localized_link_label'] = _('add')
                 else:
                     inh = [tag.input(type='hidden',
                                      name=f,
@@ -291,17 +306,29 @@ class SubTicketsModule(Component):
                                       value=str(ticket.id)),
                             class_="inlinebuttons"),
                         method="get", action=req.href.newticket())
+
+                    # button-specific arguments
+                    script_args['localized_button_label'] = _("Create")
+                    script_args['localized_button_title'] = _("Create new child ticket")
+                    script_args['href_req_newticket'] = req.href.newticket()
+                    script_args['parent_id'] = str(ticket.id)
+                    script_args['inherited_args'] = json.dumps({f: ticket[f] for f in opt_inherit})
             div.append(button)
             div.append(tag.h3(_('Subtickets '), link))
 
+        tdict = dict()
         if 'subtickets' in data:
             # table
             tbody = tag.tbody()
             div.append(tag.table(tbody, class_='subtickets'))
             # tickets
-            self._create_subtickets_table(req, data['subtickets'], tbody)
+            self._create_subtickets_table(req, data['subtickets'], tbody, tdict)
+
+        # subtickets table argument: can be empty but must be set!
+        script_args['subtickets_table']=json.dumps(tdict)
 
         if div:
             add_stylesheet(req, 'subtickets/css/subtickets.css')
             add_script(req, 'subtickets/js/appendsubticketsdata.js')
+            add_script_data(req, subtickets_script_args=json.dumps(script_args))
             add_script_data(req, content=str(div))
