@@ -31,7 +31,8 @@ import json
 from trac.config import Option, IntOption, ChoiceOption, ListOption
 from trac.core import Component, implements
 from trac.web.api import IRequestFilter
-from trac.web.chrome import ITemplateProvider, add_stylesheet, add_script, add_script_data
+from trac.web.chrome import ITemplateProvider, add_stylesheet
+from trac.web.chrome import add_script, add_script_data
 from trac.util.html import html as tag, escape
 from trac.ticket.api import ITicketManipulator
 from trac.ticket.model import Ticket
@@ -208,9 +209,7 @@ class SubTicketsModule(Component):
                             "is closed", id=id)
                     yield None, msg
 
-    # ITemplateStreamFilter method
-
-    def _create_subtickets_table(self, req, children, tbody, tdict, depth=0):
+    def _create_subtickets_table(self, req, children, tdict, depth=0):
         """Recursively create list table of subtickets
         """
         if not children:
@@ -219,7 +218,6 @@ class SubTicketsModule(Component):
             ticket = Ticket(self.env, id)
 
             # the row
-            r = []
             rdict = dict()
             # Always show ID and summary
             attrs = {'href': req.href.ticket(id)}
@@ -228,7 +226,6 @@ class SubTicketsModule(Component):
             link = tag.a('#%s' % id, **attrs)
             summary = tag.td(link, ': %s' % ticket['summary'],
                              style='padding-left: %dpx;' % (depth * 15))
-            r.append(summary)
             rdict['summary'] = str(summary)
 
             # Add other columns as configured.
@@ -250,20 +247,14 @@ class SubTicketsModule(Component):
                                      href=href))
                 else:
                     e = tag.td(ticket[column])
-                r.append(e)
                 rdict[column] = str(e)
-            tbody.append(tag.tr(*r))
             tdict[id] = rdict
 
-            self._create_subtickets_table(req, children[id], tbody, tdict, depth + 1)
+            self._create_subtickets_table(req, children[id], tdict, depth + 1)
 
     def _append_subtickets_data(self, req, data):
         if not req.path_info.startswith('/ticket/'):
             return
-
-        div = None
-        link = None
-        button = None
 
         # arguments we need in javascript
         script_args = dict()
@@ -274,61 +265,36 @@ class SubTicketsModule(Component):
         if 'ticket' in data:
             # get parents data
             ticket = data['ticket']
-            # title
-            div = tag.div(class_='description')
+
             if 'TICKET_CREATE' in req.perm(ticket.resource) \
                     and ticket['status'] != 'closed':
                 opt_inherit = self.env.config.getlist(
                     'subtickets', 'type.%(type)s.child_inherits' % ticket)
-                if self.opt_add_style == 'link':
-                    inh = {f: ticket[f] for f in opt_inherit}
-                    link = tag.a(_('add'),
-                                 href=req.href.newticket(parents=ticket.id,
-                                                         **inh))
-                    link = tag.span('(', link, ')', class_='addsubticket')
+                inh = {f: ticket[f] for f in opt_inherit}
 
+                if self.opt_add_style == 'link':
                     # link-specific arguments
-                    script_args['href_req_newticket_with_parent'] = req.href.newticket(parents=ticket.id, **inh)
+                    script_args['href_req_newticket_with_parent'] \
+                        = req.href.newticket(parents=ticket.id, **inh)
                     script_args['localized_link_label'] = _('add')
                 else:
-                    inh = [tag.input(type='hidden',
-                                     name=f,
-                                     value=ticket[f]) for f in opt_inherit]
-
-                    button = tag.form(
-                        tag.div(
-                            tag.input(type="submit",
-                                      value=_("Create"),
-                                      title=_("Create a child ticket")),
-                            inh,
-                            tag.input(type="hidden",
-                                      name="parents",
-                                      value=str(ticket.id)),
-                            class_="inlinebuttons"),
-                        method="get", action=req.href.newticket())
-
                     # button-specific arguments
                     script_args['localized_button_label'] = _("Create")
-                    script_args['localized_button_title'] = _("Create new child ticket")
+                    script_args['localized_button_title'] = \
+                        _("Create new child ticket")
                     script_args['href_req_newticket'] = req.href.newticket()
                     script_args['parent_id'] = str(ticket.id)
-                    script_args['inherited_args'] = json.dumps({f: ticket[f] for f in opt_inherit})
-            div.append(button)
-            div.append(tag.h3(_('Subtickets '), link))
+                    script_args['inherited_args'] = json.dumps(inh)
 
-        tdict = dict()
-        if 'subtickets' in data:
             # table
-            tbody = tag.tbody()
-            div.append(tag.table(tbody, class_='subtickets'))
-            # tickets
-            self._create_subtickets_table(req, data['subtickets'], tbody, tdict)
+            tdict = dict()
+            if 'subtickets' in data:
+                # tickets
+                self._create_subtickets_table(req, data['subtickets'], tdict)
 
-        # subtickets table argument: can be empty but must be set!
-        script_args['subtickets_table']=json.dumps(tdict)
+            # subtickets table argument: can be empty but must be set!
+            script_args['subtickets_table']=json.dumps(tdict)
 
-        if div:
             add_stylesheet(req, 'subtickets/css/subtickets.css')
             add_script(req, 'subtickets/js/appendsubticketsdata.js')
             add_script_data(req, subtickets_script_args=json.dumps(script_args))
-            add_script_data(req, content=str(div))
