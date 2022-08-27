@@ -39,7 +39,7 @@ from trac.ticket.model import Ticket
 from trac.ticket.model import Type as TicketType
 from trac.resource import ResourceNotFound
 
-from api import NUMBERS_RE, _
+from .api import NUMBERS_RE, _
 
 
 class SubTicketsModule(Component):

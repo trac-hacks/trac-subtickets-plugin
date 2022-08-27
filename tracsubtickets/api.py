@@ -48,7 +48,7 @@ except ImportError:
     NotificationSystem = TicketChangeEvent = None
     from trac.ticket.notification import TicketNotifyEmail
 
-import db_default
+from . import db_default
 
 
 NUMBERS_RE = re.compile(r'\d+', re.U)
