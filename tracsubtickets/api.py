@@ -120,12 +120,12 @@ class SubTicketsSystem(Component):
             cursor = db.cursor()
             if not self.found_db_version:
                 cursor.execute("""
-                    INSERT INTO system (name, value) VALUES (%s, %s)
-                    """, (db_default.name, db_default.version))
+                    INSERT INTO {0} (name, value) VALUES (%s, %s)
+                    """.format(db.quote('system')), (db_default.name, db_default.version))
             else:
                 cursor.execute("""
-                    UPDATE system SET value=%s WHERE name=%s
-                    """, (db_default.version, db_default.name))
+                    UPDATE {0} SET value=%s WHERE name=%s
+                    """.format(db.quote('system')), (db_default.version, db_default.name))
 
                 for table in db_default.tables:
                     cursor.execute("""
