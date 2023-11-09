@@ -251,8 +251,6 @@ class SubTicketsModule(Component):
                             "is closed", id=id)
                     yield None, msg
 
-    # ITemplateStreamFilter method
-
     def _create_subtickets_table(self, req, children, tbody, depth=0):
         """Recursively create list table of subtickets
         """
@@ -295,65 +293,3 @@ class SubTicketsModule(Component):
             tbody.append(tag.tr(*r))
 
             self._create_subtickets_table(req, children[id], tbody, depth + 1)
-
-    def filter_stream(self, req, method, filename, stream, data):
-        if not req.path_info.startswith('/ticket/'):
-            return stream
-
-        div = None
-        link = None
-        button = None
-
-        if 'ticket' in data:
-            # get parents data
-            ticket = data['ticket']
-            # title
-            div = tag.div(class_='description')
-            if 'TICKET_CREATE' in req.perm(ticket.resource) \
-                    and ticket['status'] != 'closed':
-                opt_inherit = self.env.config.getlist(
-                    'subtickets', 'type.%(type)s.child_inherits' % ticket)
-                if self.opt_add_style == 'link':
-                    inh = {f: ticket[f] for f in opt_inherit}
-                    link = tag.a(_('add'),
-                                 href=req.href.newticket(parents=ticket.id,
-                                                         **inh))
-                    link = tag.span('(', link, ')', class_='addsubticket')
-                else:
-                    inh = [tag.input(type='hidden',
-                                     name=f,
-                                     value=ticket[f]) for f in opt_inherit]
-
-                    button = tag.form(
-                        tag.div(
-                            tag.input(type="submit",
-                                      value=_("Create"),
-                                      title=_("Create a child ticket")),
-                            inh,
-                            tag.input(type="hidden",
-                                      name="parents",
-                                      value=str(ticket.id)),
-                            class_="inlinebuttons"),
-                        method="get", action=req.href.newticket())
-            div.append(button)
-            div.append(tag.h3(_('Subtickets '), link))
-
-        if 'subtickets' in data:
-            # table
-            tbody = tag.tbody()
-            div.append(tag.table(tbody, class_='subtickets'))
-            # tickets
-            self._create_subtickets_table(req, data['subtickets'], tbody)
-
-        if div:
-            add_stylesheet(req, 'subtickets/css/subtickets.css')
-            '''
-            If rendered in preview mode, DIV we're interested in isn't a child
-            but the root and transformation won't succeed.
-            According to HTML specification, id's must be unique within a
-            document, so it's safe to omit the leading '.' in XPath expression
-            to select all matching regardless of hierarchy their in.
-            '''
-            stream |= Transformer('//div[@id="ticket"]').append(div)
-
-        return stream
