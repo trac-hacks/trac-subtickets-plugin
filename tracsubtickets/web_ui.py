@@ -30,7 +30,7 @@
 from trac.config import Option, IntOption, ChoiceOption, ListOption
 from trac.core import Component, implements
 from trac.web.api import IRequestFilter
-from trac.web.chrome import ITemplateProvider, add_stylesheet
+from trac.web.chrome import ITemplateProvider, add_script, add_script_data, add_stylesheet
 from trac.util.html import html as tag
 from trac.ticket.api import ITicketManipulator
 from trac.ticket.model import Ticket
@@ -135,6 +135,10 @@ class SubTicketsModule(Component):
                 children = self.get_children(ticket.id)
                 if children:
                     data['subtickets'] = children
+
+            add_stylesheet(req, 'subtickets/css/subtickets.css')
+            add_script(req, 'subtickets/js/subtickets.js')
+            add_script_data(req, subtickets_div='')
 
         elif path.startswith('/admin/ticket/type') \
                 and data \
