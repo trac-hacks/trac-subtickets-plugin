@@ -5,7 +5,7 @@ jQuery(function(){
   }
 
   const div = document.createElement('div');
-  div.outerHTML = subtickets_div;
+  div.innerHTML = subtickets_div;
 
   anchor.appendChild(div);
 });
