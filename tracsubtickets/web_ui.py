@@ -136,9 +136,51 @@ class SubTicketsModule(Component):
                 if children:
                     data['subtickets'] = children
 
+                # Generate HTML string and fill into script data.
+
+                button = None
+                link = None
+
+                div = tag.div(class_='description')
+                if 'TICKET_CREATE' in req.perm(ticket.resource) \
+                        and ticket['status'] != 'closed':
+                    opt_inherit = self.env.config.getlist(
+                        'subtickets', 'type.%(type)s.child_inherits' % ticket)
+                    if self.opt_add_style == 'link':
+                        inh = {f: ticket[f] for f in opt_inherit}
+                        link = tag.a(_('add'),
+                                     href=req.href.newticket(parents=ticket.id,
+                                                             **inh))
+                        link = tag.span('(', link, ')', class_='addsubticket')
+                    else:
+                        inh = [tag.input(type='hidden',
+                                         name=f,
+                                         value=ticket[f]) for f in opt_inherit]
+
+                        button = tag.form(
+                            tag.div(
+                                tag.input(type="submit",
+                                          value=_("Create"),
+                                          title=_("Create a child ticket")),
+                                inh,
+                                tag.input(type="hidden",
+                                          name="parents",
+                                          value=str(ticket.id)),
+                                class_="inlinebuttons"),
+                            method="get", action=req.href.newticket())
+                div.append(button)
+                div.append(tag.h3(_('Subtickets '), link))
+
+            if 'subtickets' in data:
+                # table
+                tbody = tag.tbody()
+                div.append(tag.table(tbody, class_='subtickets'))
+                # tickets
+                self._create_subtickets_table(req, data['subtickets'], tbody)
+
             add_stylesheet(req, 'subtickets/css/subtickets.css')
             add_script(req, 'subtickets/js/subtickets.js')
-            add_script_data(req, subtickets_div='')
+            add_script_data(req, subtickets_div=str(div))
 
         elif path.startswith('/admin/ticket/type') \
                 and data \
