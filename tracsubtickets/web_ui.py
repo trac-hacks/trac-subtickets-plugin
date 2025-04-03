@@ -29,7 +29,7 @@
 
 from trac.config import Option, IntOption, ChoiceOption, ListOption
 from trac.core import Component, implements
-from trac.web.api import IRequestFilter, ITemplateStreamFilter
+from trac.web.api import IRequestFilter
 from trac.web.chrome import ITemplateProvider, add_stylesheet
 from trac.util.html import html as tag
 from trac.ticket.api import ITicketManipulator
@@ -38,13 +38,12 @@ from trac.ticket.model import Type as TicketType
 from trac.resource import ResourceNotFound
 from genshi.filters import Transformer
 
-from api import NUMBERS_RE, _
+from tracsubtickets.api import NUMBERS_RE, _
 
 
 class SubTicketsModule(Component):
 
-    implements(IRequestFilter, ITicketManipulator, ITemplateProvider,
-               ITemplateStreamFilter)
+    implements(IRequestFilter, ITicketManipulator, ITemplateProvider)
 
     # Simple Options
 
