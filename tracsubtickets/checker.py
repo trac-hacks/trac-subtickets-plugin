@@ -68,9 +68,9 @@ def check_subtickets(db):
                 result = True
 
         if not result:
-            print "Mismatch in ticket #%i" % id
-            print "  custom field :", cfield.get(id, '--')
-            print "  subtickets   :", subtickets.get(id, '--')
+            print( "Mismatch in ticket #%i" % id )
+            print( "  custom field :", cfield.get(id, '--'))
+            print( "  subtickets   :", subtickets.get(id, '--'))
 
 
 def main(args=sys.argv[1:]):
