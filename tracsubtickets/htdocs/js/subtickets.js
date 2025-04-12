@@ -20,7 +20,9 @@ $(document).ready(function() {
 
     // Tracが提供するスクリプトデータからサブチケット情報を取得
     var subticketsData = window.tracSubticketsData;
+    var columnNames = window.columnNames;
     console.log('Subtickets data:', subticketsData);
+    console.log('Column names:', columnNames);
 
     // サブチケットセクションを作成
     var subticketsSection = $('<div class="subtickets-section">');
@@ -47,10 +49,12 @@ $(document).ready(function() {
         var table = $('<table class="listing subtickets">');
         var thead = $('<thead>');
         var headerRow = $('<tr>');
-        headerRow.append($('<th>').text('ID'));
-        headerRow.append($('<th>').text('Summary'));
-        headerRow.append($('<th>').text('Status'));
-        headerRow.append($('<th>').text('Owner'));
+        headerRow.append($('<th>').text(columnNames.id));
+        headerRow.append($('<th>').text(columnNames.summary));
+        headerRow.append($('<th>').text(columnNames.status));
+        headerRow.append($('<th>').text(columnNames.type));
+        headerRow.append($('<th>').text(columnNames.priority));
+        headerRow.append($('<th>').text(columnNames.owner));
         thead.append(headerRow);
         table.append(thead);
 
@@ -76,6 +80,8 @@ $(document).ready(function() {
             // その他のセルを追加
             row.append($('<td>').text(subticket.summary));
             row.append($('<td>').text(subticket.status));
+            row.append($('<td>').text(subticket.type || ''));
+            row.append($('<td>').text(subticket.priority || ''));
             row.append($('<td>').text(subticket.owner || ''));
             tbody.append(row);
         });

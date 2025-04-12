@@ -36,11 +36,19 @@ from trac.ticket.api import ITicketManipulator
 from trac.ticket.model import Ticket
 from trac.ticket.model import Type as TicketType
 from trac.resource import ResourceNotFound
+from trac.util.translation import domain_functions
 import os
 import json
 
 from tracsubtickets.api import NUMBERS_RE, _
 
+# i18n support for plugins
+_, tag_, N_, add_domain = domain_functions('tracsubtickets',
+                                           '_', 'tag_', 'N_', 'add_domain')
+
+# Get Trac's core translations
+_, core_tag_, core_N_, add_core_domain = domain_functions('trac',
+                                           '_', 'tag_', 'N_', 'add_domain')
 
 class SubTicketsModule(Component):
 
@@ -152,9 +160,20 @@ class SubTicketsModule(Component):
 
                         add_stylesheet(req, 'subtickets/css/subtickets.css')
 
+                        # 国際化されたカラム名を取得
+                        column_names = {
+                            'id': _('Ticket'),
+                            'summary': _('Summary'),
+                            'status': _('Status'),
+                            'type': _('Type'),
+                            'priority': _('Priority'),
+                            'owner': _('Owner')
+                        }
+
                         # サブチケットデータをJavaScriptに渡す
                         js_data = {
-                            'tracSubticketsData': data['subtickets']
+                            'tracSubticketsData': data['subtickets'],
+                            'columnNames': column_names
                         }
                         add_script_data(req, js_data)
 
@@ -188,6 +207,8 @@ class SubTicketsModule(Component):
                     'id': child,
                     'summary': child_ticket['summary'],
                     'status': child_ticket['status'],
+                    'type': child_ticket['type'],
+                    'priority': child_ticket['priority'],
                     'owner': child_ticket['owner'],
                     'href': self.env.href.ticket(child),
                     'children': self._get_children_data(child)

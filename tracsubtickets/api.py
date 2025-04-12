@@ -332,6 +332,8 @@ class SubTicketsApi(Component):
                     'id': child,
                     'summary': ticket['summary'],
                     'status': ticket['status'],
+                    'type': ticket['type'],
+                    'priority': ticket['priority'],
                     'owner': ticket['owner'],
                     'children': self._get_children_data(child, depth + 1)
                 }
