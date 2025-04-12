@@ -71,7 +71,9 @@ setup(
     package_data={
         'tracsubtickets': [
             'htdocs/css/*.css',
+            'htdocs/js/*.js',
             'locale/*/LC_MESSAGES/*.mo',
+            'templates/*.html',
         ],
     },
     entry_points={
@@ -83,6 +85,9 @@ setup(
             'check-trac-subtickets = tracsubtickets.checker:main',
         ],
     },
-
+    test_suite='tests',
+    install_requires=[
+        'Trac>=1.6',
+    ],
     **extra
 )

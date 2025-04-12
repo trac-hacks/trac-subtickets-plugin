@@ -28,6 +28,7 @@
 # POSSIBILITY OF SUCH DAMAGE.
 
 import re
+import json
 
 import pkg_resources
 
@@ -50,6 +51,8 @@ except ImportError:
 
 import tracsubtickets.db_default
 
+from trac.web.api import IRequestHandler
+from trac.web.chrome import ITemplateProvider
 
 NUMBERS_RE = re.compile(r'\d+', re.U)
 
@@ -155,7 +158,7 @@ class SubTicketsSystem(Component):
             cfield = self.config['ticket-custom']
             if 'parents' not in cfield:
                 cfield.set('parents', 'text')
-                cfield.set('parents.label', 'Parent Tickets')
+                cfield.set('parents.label', 'Parent Tickets (TEST)')
                 self.config.save()
 
     # ITicketChangeListener methods
@@ -289,3 +292,56 @@ class SubTicketsSystem(Component):
                 self.log.error("Failure sending notification on change to "
                                "ticket #%s: %s",
                                ticket.id, exception_to_unicode(e))
+
+class SubTicketsApi(Component):
+    implements(IRequestHandler, ITemplateProvider)
+
+    def match_request(self, req):
+        return req.path_info.startswith('/subtickets/api/')
+
+    def process_request(self, req):
+        if req.method != 'GET':
+            req.send_error(405, 'Method not allowed')
+            return
+
+        ticket_id = req.path_info.split('/')[-1]
+        try:
+            ticket_id = int(ticket_id)
+        except ValueError:
+            req.send_error(400, 'Invalid ticket ID')
+            return
+
+        try:
+            ticket = Ticket(self.env, ticket_id)
+        except:
+            req.send_error(404, 'Ticket not found')
+            return
+
+        children = self._get_children_data(ticket_id)
+        req.send(json.dumps(children), 'application/json')
+
+    def _get_children_data(self, parent_id, depth=0):
+        children = {}
+
+        for parent, child in self.env.db_query("""
+                SELECT parent, child FROM subtickets WHERE parent=%s
+                """, (parent_id,)):
+            try:
+                ticket = Ticket(self.env, child)
+                children[child] = {
+                    'id': child,
+                    'summary': ticket['summary'],
+                    'status': ticket['status'],
+                    'owner': ticket['owner'],
+                    'children': self._get_children_data(child, depth + 1)
+                }
+            except:
+                continue
+
+        return children
+
+    def get_templates_dirs(self):
+        return []
+
+    def get_htdocs_dirs(self):
+        return []

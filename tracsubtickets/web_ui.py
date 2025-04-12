@@ -30,13 +30,14 @@
 from trac.config import Option, IntOption, ChoiceOption, ListOption
 from trac.core import Component, implements
 from trac.web.api import IRequestFilter
-from trac.web.chrome import ITemplateProvider, add_stylesheet
+from trac.web.chrome import ITemplateProvider, add_stylesheet, add_script, add_script_data
 from trac.util.html import html as tag
 from trac.ticket.api import ITicketManipulator
 from trac.ticket.model import Ticket
 from trac.ticket.model import Type as TicketType
 from trac.resource import ResourceNotFound
-from genshi.filters import Transformer
+import os
+import json
 
 from tracsubtickets.api import NUMBERS_RE, _
 
@@ -120,27 +121,72 @@ class SubTicketsModule(Component):
         return handler
 
     def post_process_request(self, req, template, data, content_type):
-        path = req.path_info
+        try:
+            # path_infoがNoneの場合は空文字列を使用
+            path = req.path_info or ''
+            self.log.debug('Processing request path: %s', path)
 
-        if path.startswith('/ticket/') or path.startswith('/newticket'):
-            # get parent ticket's data
-            if data and 'ticket' in data:
-                ticket = data['ticket']
-                parents = ticket['parents'] or ''
-                ids = set(NUMBERS_RE.findall(parents))
+            # チケットページの処理
+            if '/ticket/' in path:
+                if data and 'ticket' in data:
+                    ticket = data['ticket']
+                    self.log.debug('Processing ticket #%s', ticket.id)
 
-                if len(parents) > 0:
-                    self._append_parent_links(req, data, ids)
+                    parents = ticket['parents'] or ''
+                    ids = set(NUMBERS_RE.findall(parents))
 
-                children = self.get_children(ticket.id)
-                if children:
-                    data['subtickets'] = children
+                    if len(parents) > 0:
+                        self._append_parent_links(req, data, ids)
 
-        elif path.startswith('/admin/ticket/type') \
-                and data \
-                and set(['add', 'name']).issubset(data.keys()) \
-                and data['add'] == 'Add':
-            self._add_per_ticket_type_option(data['name'])
+                    # 子チケットの情報を取得して表示用データを準備
+                    if ticket.exists:
+                        data['subtickets'] = []
+
+                        # 子チケットを取得
+                        children = self.env.db_query("""
+                                SELECT parent, child FROM subtickets WHERE parent=%s
+                                """, (ticket.id,))
+                        self.log.debug('Found children in DB: %s', children)
+
+                        for parent, child in children:
+                            try:
+                                child_ticket = Ticket(self.env, child)
+                                child_data = {
+                                    'id': child,
+                                    'summary': child_ticket['summary'],
+                                    'status': child_ticket['status'],
+                                    'owner': child_ticket['owner'],
+                                    'href': req.href.ticket(child)
+                                }
+                                data['subtickets'].append(child_data)
+                                self.log.debug('Added child ticket data: %s', child_data)
+                            except ResourceNotFound:
+                                self.log.warning('Child ticket #%s not found', child)
+                                continue
+
+                        self.log.debug('Final subtickets data: %s', data.get('subtickets', []))
+                        add_stylesheet(req, 'subtickets/css/subtickets.css')
+
+                        # サブチケットデータをJavaScriptに渡す
+                        js_data = {
+                            'tracSubticketsData': data['subtickets']
+                        }
+                        add_script_data(req, js_data)
+
+                        # subtickets.jsを読み込む（データを設定した後で読み込む）
+                        add_script(req, 'subtickets/js/subtickets.js')
+
+            # 管理ページの処理
+            if '/admin/ticket/type' in path \
+                    and data \
+                    and set(['add', 'name']).issubset(data.keys()) \
+                    and data['add'] == 'Add':
+                self._add_per_ticket_type_option(data['name'])
+
+        except Exception as e:
+            self.log.error('Error in post_process_request: %s', str(e))
+            self.log.error('Request path: %r, Template: %r', getattr(req, 'path_info', None), template)
+            raise
 
         return template, data, content_type
 
@@ -204,110 +250,3 @@ class SubTicketsModule(Component):
                     msg = _("Cannot reopen because parent ticket #%(id)s "
                             "is closed", id=id)
                     yield None, msg
-
-    # ITemplateStreamFilter method
-
-    def _create_subtickets_table(self, req, children, tbody, depth=0):
-        """Recursively create list table of subtickets
-        """
-        if not children:
-            return
-        for id in sorted(children, key=lambda x: int(x)):
-            ticket = Ticket(self.env, id)
-
-            # the row
-            r = []
-            # Always show ID and summary
-            attrs = {'href': req.href.ticket(id)}
-            if ticket['status'] == 'closed':
-                attrs['class_'] = 'closed'
-            link = tag.a('#%s' % id, **attrs)
-            summary = tag.td(link, ': %s' % ticket['summary'],
-                             style='padding-left: %dpx;' % (depth * 15))
-            r.append(summary)
-
-            # Add other columns as configured.
-            for column in \
-                    self.env.config.getlist('subtickets',
-                                            'type.%(type)s.table_columns'
-                                            % ticket):
-                if column == 'owner':
-                    if self.opt_owner_url:
-                        href = req.href(self.opt_owner_url % ticket['owner'])
-                    else:
-                        href = req.href.query(status='!closed',
-                                              owner=ticket['owner'])
-                    e = tag.td(tag.a(ticket['owner'], href=href))
-                elif column == 'milestone':
-                    href = req.href.query(status='!closed',
-                                          milestone=ticket['milestone'])
-                    e = tag.td(tag.a(ticket['milestone'],
-                                     href=href))
-                else:
-                    e = tag.td(ticket[column])
-                r.append(e)
-            tbody.append(tag.tr(*r))
-
-            self._create_subtickets_table(req, children[id], tbody, depth + 1)
-
-    def filter_stream(self, req, method, filename, stream, data):
-        if not req.path_info.startswith('/ticket/'):
-            return stream
-
-        div = None
-        link = None
-        button = None
-
-        if 'ticket' in data:
-            # get parents data
-            ticket = data['ticket']
-            # title
-            div = tag.div(class_='description')
-            if 'TICKET_CREATE' in req.perm(ticket.resource) \
-                    and ticket['status'] != 'closed':
-                opt_inherit = self.env.config.getlist(
-                    'subtickets', 'type.%(type)s.child_inherits' % ticket)
-                if self.opt_add_style == 'link':
-                    inh = {f: ticket[f] for f in opt_inherit}
-                    link = tag.a(_('add'),
-                                 href=req.href.newticket(parents=ticket.id,
-                                                         **inh))
-                    link = tag.span('(', link, ')', class_='addsubticket')
-                else:
-                    inh = [tag.input(type='hidden',
-                                     name=f,
-                                     value=ticket[f]) for f in opt_inherit]
-
-                    button = tag.form(
-                        tag.div(
-                            tag.input(type="submit",
-                                      value=_("Create"),
-                                      title=_("Create a child ticket")),
-                            inh,
-                            tag.input(type="hidden",
-                                      name="parents",
-                                      value=str(ticket.id)),
-                            class_="inlinebuttons"),
-                        method="get", action=req.href.newticket())
-            div.append(button)
-            div.append(tag.h3(_('Subtickets '), link))
-
-        if 'subtickets' in data:
-            # table
-            tbody = tag.tbody()
-            div.append(tag.table(tbody, class_='subtickets'))
-            # tickets
-            self._create_subtickets_table(req, data['subtickets'], tbody)
-
-        if div:
-            add_stylesheet(req, 'subtickets/css/subtickets.css')
-            '''
-            If rendered in preview mode, DIV we're interested in isn't a child
-            but the root and transformation won't succeed.
-            According to HTML specification, id's must be unique within a
-            document, so it's safe to omit the leading '.' in XPath expression
-            to select all matching regardless of hierarchy their in.
-            '''
-            stream |= Transformer('//div[@id="ticket"]').append(div)
-
-        return stream
