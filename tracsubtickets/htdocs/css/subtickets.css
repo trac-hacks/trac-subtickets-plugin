@@ -67,6 +67,45 @@ h3 .addsubticket {
     border-bottom: 1px solid #ccc;
 }
 
+.subtickets-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin: 0;
+    padding: 0.5em 0;
+    border-bottom: 1px solid #dd9;
+}
+
+.subtickets-header h2 {
+    margin: 0;
+    font-size: 1.1em;
+    font-weight: bold;
+    color: #663;
+}
+
+.subtickets-header .buttons {
+    margin-left: 1em;
+    white-space: nowrap;
+}
+
+/* ボタンのようなリンクスタイル */
+.buttons .newticket {
+    background: #f6f6f6 url(../../../chrome/common/buttons.png) 0 0;
+    border: 1px solid #999;
+    border-radius: 3px;
+    color: #333;
+    cursor: pointer;
+    font-size: 12px;
+    padding: 0.1em 0.5em;
+    text-decoration: none;
+}
+
+.buttons .newticket:hover {
+    background-color: #e6e6e6;
+    color: #333;
+    text-decoration: none;
+}
+
 .subtickets a {
     text-decoration: none;
 }

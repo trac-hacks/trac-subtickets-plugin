@@ -22,6 +22,26 @@ $(document).ready(function() {
     var subticketsData = window.tracSubticketsData;
     console.log('Subtickets data:', subticketsData);
 
+    // サブチケットセクションを作成
+    var subticketsSection = $('<div class="subtickets-section">');
+
+    // タイトル部分を作成（子チケット作成ボタンを含む）
+    var titleContainer = $('<div class="subtickets-header">');
+    var title = $('<h2>').text('Subtickets');
+    titleContainer.append(title);
+
+    // 子チケット作成ボタンを追加
+    var newTicketUrl = window.location.pathname.replace(/\/ticket\/\d+$/, '/newticket') + '?parents=' + ticketId;
+    var buttonContainer = $('<div>').addClass('buttons');
+    var button = $('<a>')
+        .addClass('newticket')
+        .attr('href', newTicketUrl)
+        .text('New subticket');
+    buttonContainer.append(button);
+    titleContainer.append(buttonContainer);
+
+    subticketsSection.append(titleContainer);
+
     if (subticketsData && subticketsData.length > 0) {
         // サブチケットテーブルを作成
         var table = $('<table class="listing subtickets">');
@@ -60,16 +80,10 @@ $(document).ready(function() {
             tbody.append(row);
         });
         table.append(tbody);
-
-        // サブチケットセクションを作成
-        var subticketsSection = $('<div class="subtickets-section">');
-        subticketsSection.append($('<h2>').text('Subtickets'));
         subticketsSection.append(table);
-
-        // 説明の後に追加
-        descriptionElement.after(subticketsSection);
-        console.log('Added subtickets section after description');
-    } else {
-        console.log('No subtickets found');
     }
+
+    // 説明の後に追加
+    descriptionElement.after(subticketsSection);
+    console.log('Added subtickets section after description');
 });
