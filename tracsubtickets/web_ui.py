@@ -142,29 +142,14 @@ class SubTicketsModule(Component):
                     if ticket.exists:
                         data['subtickets'] = []
 
-                        # 子チケットを取得
-                        children = self.env.db_query("""
-                                SELECT parent, child FROM subtickets WHERE parent=%s
-                                """, (ticket.id,))
-                        self.log.debug('Found children in DB: %s', children)
+                        # 子チケットを再帰的に取得
+                        children_data = self._get_children_data(ticket.id)
+                        self.log.debug('Found children data: %s', children_data)
 
-                        for parent, child in children:
-                            try:
-                                child_ticket = Ticket(self.env, child)
-                                child_data = {
-                                    'id': child,
-                                    'summary': child_ticket['summary'],
-                                    'status': child_ticket['status'],
-                                    'owner': child_ticket['owner'],
-                                    'href': req.href.ticket(child)
-                                }
-                                data['subtickets'].append(child_data)
-                                self.log.debug('Added child ticket data: %s', child_data)
-                            except ResourceNotFound:
-                                self.log.warning('Child ticket #%s not found', child)
-                                continue
-
+                        # 子チケットデータをフラット化して表示用データを準備
+                        self._flatten_children_data(children_data, data['subtickets'], 0)
                         self.log.debug('Final subtickets data: %s', data.get('subtickets', []))
+
                         add_stylesheet(req, 'subtickets/css/subtickets.css')
 
                         # サブチケットデータをJavaScriptに渡す
@@ -189,6 +174,41 @@ class SubTicketsModule(Component):
             raise
 
         return template, data, content_type
+
+    def _get_children_data(self, parent_id):
+        """再帰的に子チケットデータを取得する"""
+        children_data = []
+
+        for parent, child in self.env.db_query("""
+                SELECT parent, child FROM subtickets WHERE parent=%s
+                """, (parent_id,)):
+            try:
+                child_ticket = Ticket(self.env, child)
+                child_data = {
+                    'id': child,
+                    'summary': child_ticket['summary'],
+                    'status': child_ticket['status'],
+                    'owner': child_ticket['owner'],
+                    'href': self.env.href.ticket(child),
+                    'children': self._get_children_data(child)
+                }
+                children_data.append(child_data)
+            except ResourceNotFound:
+                self.log.warning('Child ticket #%s not found', child)
+                continue
+
+        return children_data
+
+    def _flatten_children_data(self, children_data, result, level):
+        """再帰的な子チケットデータをフラット化して表示用データを準備する"""
+        for child in children_data:
+            # レベル情報を追加
+            child['level'] = level
+            result.append(child)
+
+            # 子チケットがある場合は再帰的に処理
+            if child['children'] and len(child['children']) > 0:
+                self._flatten_children_data(child['children'], result, level + 1)
 
     def _append_parent_links(self, req, data, ids):
         links = []

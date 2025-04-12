@@ -37,9 +37,23 @@ $(document).ready(function() {
         var tbody = $('<tbody>');
         subticketsData.forEach(function(subticket) {
             var row = $('<tr>');
-            // 相対パスを使用してチケットURLを生成
+
+            // IDセルを作成（インデントを含む）
+            var idCell = $('<td>');
+            // レベルに応じたインデントを追加
+            if (subticket.level > 0) {
+                var indent = $('<span>').addClass('indent');
+                for (var i = 0; i < subticket.level; i++) {
+                    indent.append($('<span>').addClass('indent-level'));
+                }
+                idCell.append(indent);
+            }
+            // チケットIDのリンクを追加
             var ticketUrl = window.location.pathname.replace(/\/\d+$/, '') + '/' + subticket.id;
-            row.append($('<td>').append($('<a>').attr('href', ticketUrl).text('#' + subticket.id)));
+            idCell.append($('<a>').attr('href', ticketUrl).text('#' + subticket.id));
+            row.append(idCell);
+
+            // その他のセルを追加
             row.append($('<td>').text(subticket.summary));
             row.append($('<td>').text(subticket.status));
             row.append($('<td>').text(subticket.owner || ''));

@@ -52,6 +52,21 @@ h3 .addsubticket {
     border-bottom: 1px solid #eee;
 }
 
+/* インデントのスタイル */
+.subtickets .indent {
+    display: inline-block;
+    margin-right: 0.2em;
+}
+
+.subtickets .indent-level {
+    display: inline-block;
+    width: 0.6em;
+    height: 1em;
+    margin-right: 0.1em;
+    border-left: 1px solid #ccc;
+    border-bottom: 1px solid #ccc;
+}
+
 .subtickets a {
     text-decoration: none;
 }
