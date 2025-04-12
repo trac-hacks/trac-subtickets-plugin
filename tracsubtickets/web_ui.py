@@ -130,11 +130,11 @@ class SubTicketsModule(Component):
 
     def post_process_request(self, req, template, data, content_type):
         try:
-            # path_infoがNoneの場合は空文字列を使用
+            # Use empty string if path_info is None
             path = req.path_info or ''
             self.log.debug('Processing request path: %s', path)
 
-            # チケットページの処理
+            # Process ticket page
             if '/ticket/' in path:
                 if data and 'ticket' in data:
                     ticket = data['ticket']
@@ -146,21 +146,21 @@ class SubTicketsModule(Component):
                     if len(parents) > 0:
                         self._append_parent_links(req, data, ids)
 
-                    # 子チケットの情報を取得して表示用データを準備
+                    # Prepare subticket data for display
                     if ticket.exists:
                         data['subtickets'] = []
 
-                        # 子チケットを再帰的に取得
+                        # Recursively get child tickets
                         children_data = self._get_children_data(ticket.id)
                         self.log.debug('Found children data: %s', children_data)
 
-                        # 子チケットデータをフラット化して表示用データを準備
+                        # Flatten child ticket data for display
                         self._flatten_children_data(children_data, data['subtickets'], 0)
                         self.log.debug('Final subtickets data: %s', data.get('subtickets', []))
 
                         add_stylesheet(req, 'subtickets/css/subtickets.css')
 
-                        # 国際化されたカラム名を取得
+                        # Get internationalized column names
                         column_names = {
                             'id': _('Ticket'),
                             'summary': _('Summary'),
@@ -170,17 +170,17 @@ class SubTicketsModule(Component):
                             'owner': _('Owner')
                         }
 
-                        # サブチケットデータをJavaScriptに渡す
+                        # Pass subticket data to JavaScript
                         js_data = {
                             'tracSubticketsData': data['subtickets'],
                             'columnNames': column_names
                         }
                         add_script_data(req, js_data)
 
-                        # subtickets.jsを読み込む（データを設定した後で読み込む）
+                        # Load subtickets.js after setting the data
                         add_script(req, 'subtickets/js/subtickets.js')
 
-            # 管理ページの処理
+            # Process admin page
             if '/admin/ticket/type' in path \
                     and data \
                     and set(['add', 'name']).issubset(data.keys()) \
@@ -195,7 +195,7 @@ class SubTicketsModule(Component):
         return template, data, content_type
 
     def _get_children_data(self, parent_id):
-        """再帰的に子チケットデータを取得する"""
+        """Recursively retrieve child ticket data"""
         children_data = []
 
         for parent, child in self.env.db_query("""
@@ -221,13 +221,13 @@ class SubTicketsModule(Component):
         return children_data
 
     def _flatten_children_data(self, children_data, result, level):
-        """再帰的な子チケットデータをフラット化して表示用データを準備する"""
+        """Flatten recursive child ticket data for display"""
         for child in children_data:
-            # レベル情報を追加
+            # Add level information
             child['level'] = level
             result.append(child)
 
-            # 子チケットがある場合は再帰的に処理
+            # Process recursively if there are child tickets
             if child['children'] and len(child['children']) > 0:
                 self._flatten_children_data(child['children'], result, level + 1)
 

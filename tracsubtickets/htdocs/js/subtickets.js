@@ -1,14 +1,14 @@
 $(document).ready(function() {
     console.log('Subtickets.js loaded');
 
-    // チケットページかどうかを確認
+    // Check if we are on a ticket page
     var descriptionElement = $('.description');
     if (!descriptionElement.length) {
         console.log('Description element not found');
         return;
     }
 
-    // チケットIDを取得
+    // Get ticket ID from URL
     var match = window.location.pathname.match(/\/ticket\/(\d+)/);
     if (!match) {
         console.log('No ticket ID found in URL');
@@ -18,21 +18,21 @@ $(document).ready(function() {
     var ticketId = match[1];
     console.log('Processing ticket:', ticketId);
 
-    // Tracが提供するスクリプトデータからサブチケット情報を取得
+    // Get subticket data from Trac's script data
     var subticketsData = window.tracSubticketsData;
     var columnNames = window.columnNames;
     console.log('Subtickets data:', subticketsData);
     console.log('Column names:', columnNames);
 
-    // サブチケットセクションを作成
+    // Create subtickets section
     var subticketsSection = $('<div class="subtickets-section">');
 
-    // タイトル部分を作成（子チケット作成ボタンを含む）
+    // Create title section (including new subticket button)
     var titleContainer = $('<div class="subtickets-header">');
     var title = $('<h2>').text('Subtickets');
     titleContainer.append(title);
 
-    // 子チケット作成ボタンを追加
+    // Add new subticket button
     var newTicketUrl = window.location.pathname.replace(/\/ticket\/\d+$/, '/newticket') + '?parents=' + ticketId;
     var buttonContainer = $('<div>').addClass('buttons');
     var button = $('<a>')
@@ -45,7 +45,7 @@ $(document).ready(function() {
     subticketsSection.append(titleContainer);
 
     if (subticketsData && subticketsData.length > 0) {
-        // サブチケットテーブルを作成
+        // Create subtickets table
         var table = $('<table class="listing subtickets">');
         var thead = $('<thead>');
         var headerRow = $('<tr>');
@@ -62,9 +62,9 @@ $(document).ready(function() {
         subticketsData.forEach(function(subticket) {
             var row = $('<tr>');
 
-            // IDセルを作成（インデントを含む）
+            // Create ID cell (with indentation)
             var idCell = $('<td>');
-            // レベルに応じたインデントを追加
+            // Add indentation based on level
             if (subticket.level > 0) {
                 var indent = $('<span>').addClass('indent');
                 for (var i = 0; i < subticket.level; i++) {
@@ -72,12 +72,12 @@ $(document).ready(function() {
                 }
                 idCell.append(indent);
             }
-            // チケットIDのリンクを追加
+            // Add ticket ID link
             var ticketUrl = window.location.pathname.replace(/\/\d+$/, '') + '/' + subticket.id;
             idCell.append($('<a>').attr('href', ticketUrl).text('#' + subticket.id));
             row.append(idCell);
 
-            // その他のセルを追加
+            // Add other cells
             row.append($('<td>').text(subticket.summary));
             row.append($('<td>').text(subticket.status));
             row.append($('<td>').text(subticket.type || ''));
@@ -89,7 +89,7 @@ $(document).ready(function() {
         subticketsSection.append(table);
     }
 
-    // 説明の後に追加
+    // Add after description
     descriptionElement.after(subticketsSection);
     console.log('Added subtickets section after description');
 });
