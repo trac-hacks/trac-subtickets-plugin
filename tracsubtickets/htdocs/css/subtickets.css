@@ -25,11 +25,10 @@ h3 .addsubticket {
     border-bottom: 1px solid #ccc;
 }
 
-/* サブチケットセクションのタイトルスタイル */
+/* Title style for subtickets section */
 .subtickets-section h2 {
     margin: 0;
-    padding: 0.5em 0;
-    border-bottom: 1px solid #dd9;
+    padding: 0;
     font-size: 1.1em;
     font-weight: bold;
     color: #663;
