@@ -49,7 +49,7 @@ except ImportError:
     NotificationSystem = TicketChangeEvent = None
     from trac.ticket.notification import TicketNotifyEmail
 
-import tracsubtickets.db_default
+from . import db_default
 
 from trac.web.api import IRequestHandler
 from trac.web.chrome import ITemplateProvider
