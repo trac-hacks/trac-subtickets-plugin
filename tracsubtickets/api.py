@@ -158,7 +158,7 @@ class SubTicketsSystem(Component):
             cfield = self.config['ticket-custom']
             if 'parents' not in cfield:
                 cfield.set('parents', 'text')
-                cfield.set('parents.label', 'Parent Tickets (TEST)')
+                cfield.set('parents.label', 'Parent Tickets')
                 self.config.save()
 
     # ITicketChangeListener methods
