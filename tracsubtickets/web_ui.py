@@ -36,8 +36,12 @@ from trac.ticket.api import ITicketManipulator
 from trac.ticket.model import Ticket
 from trac.ticket.model import Type as TicketType
 from trac.resource import ResourceNotFound
+from trac.web.chrome import Chrome
 
 from .api import NUMBERS_RE, _
+
+
+_use_jinja2 = hasattr(Chrome, 'jenv')
 
 
 class SubTicketsModule(Component):
@@ -168,7 +172,8 @@ class SubTicketsModule(Component):
                                 class_="inlinebuttons"),
                             method="get", action=req.href.newticket())
                 div.append(button)
-                div.append(tag.h3(_('Subtickets '), link))
+                header = tag.h2 if _use_jinja2 else tag.h3
+                div.append(header(_('Subtickets '), link))
 
             if 'subtickets' in data:
                 # table
