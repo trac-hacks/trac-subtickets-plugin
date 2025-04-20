@@ -216,8 +216,8 @@ class SubTicketsModule(Component):
         children = {}
 
         for parent, child in self.env.db_query("""
-                SELECT parent, child FROM subtickets WHERE parent IN %s
-                """, ([parent_id], )):
+                SELECT parent, child FROM subtickets WHERE parent=%s
+                """, (parent_id, )):
             children[child] = None
 
         if self.opt_recursion_depth > depth or self.opt_recursion_depth == -1:
