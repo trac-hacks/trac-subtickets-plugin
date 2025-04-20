@@ -32,7 +32,7 @@ from optparse import OptionParser
 
 from trac.env import open_environment
 
-from api import NUMBERS_RE
+from .api import NUMBERS_RE
 
 
 def check_subtickets(db):
@@ -68,9 +68,9 @@ def check_subtickets(db):
                 result = True
 
         if not result:
-            print "Mismatch in ticket #%i" % id
-            print "  custom field :", cfield.get(id, '--')
-            print "  subtickets   :", subtickets.get(id, '--')
+            print("Mismatch in ticket #%i" % id)
+            print("  custom field :", cfield.get(id, '--'))
+            print("  subtickets   :", subtickets.get(id, '--'))
 
 
 def main(args=sys.argv[1:]):
@@ -90,7 +90,7 @@ def main(args=sys.argv[1:]):
 
     # check all the environments
     for env in envs:
-        with env.db_transaction as db:
+        with env.db_query as db:
             check_subtickets(db)
 
 
