@@ -55,7 +55,7 @@ setup(
     author_email='TakashiC.Ito@gmail.com',
     maintainer='Theodor Norup',
     maintainer_email='theodor.norup@gmail.com',
-    url='http://github.com/trac-hacks/trac-subtickets-plugin',
+    url='https://github.com/trac-hacks/trac-subtickets-plugin',
     description='Trac Sub-Tickets Plugin',
     long_description="""
     This plugin for Trac 1.0 and later provides Sub-Tickets functionality.
