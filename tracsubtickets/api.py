@@ -99,9 +99,9 @@ class SubTicketsSystem(Component):
         with self.env.db_query as db:
             for value, in db("""
                     SELECT value FROM {0} WHERE name=%s
-                    """.format(db.quote('system')), (tracsubtickets.db_default.name,)):
+                    """.format(db.quote('system')), (db_default.name,)):
                 self.found_db_version = int(value)
-                if self.found_db_version < tracsubtickets.db_default.version:
+                if self.found_db_version < db_default.version:
                     return True
                 break
             else:
@@ -124,13 +124,13 @@ class SubTicketsSystem(Component):
             if not self.found_db_version:
                 cursor.execute("""
                     INSERT INTO system (name, value) VALUES (%s, %s)
-                    """, (tracsubtickets.db_default.name, tracsubtickets.db_default.version))
+                    """, (db_default.name, db_default.version))
             else:
                 cursor.execute("""
                     UPDATE system SET value=%s WHERE name=%s
-                    """, (tracsubtickets.db_default.version, tracsubtickets.db_default.name))
+                    """, (db_default.version, db_default.name))
 
-                for table in tracsubtickets.db_default.tables:
+                for table in db_default.tables:
                     cursor.execute("""
                         SELECT * FROM """ + table.name)
                     cols = [x[0] for x in cursor.description]
@@ -140,7 +140,7 @@ class SubTicketsSystem(Component):
                         DROP TABLE """ + table.name)
 
             # insert the default table
-            for table in tracsubtickets.db_default.tables:
+            for table in db_default.tables:
                 for sql in db_manager.to_sql(table):
                     cursor.execute(sql)
 
