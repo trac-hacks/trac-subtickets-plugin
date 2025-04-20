@@ -1,0 +1,44 @@
+---
+
+name: build
+
+on: [push]
+
+concurrency:
+  group: ${{ github.workflow }}--${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  build:
+    runs-on: ${{ matrix.os }}
+
+    strategy:
+      matrix:
+        os: [ubuntu-22.04]
+
+    steps:
+
+    - uses: actions/checkout@v4
+
+    - uses: actions/setup-python@v5
+      with:
+        python-version: |
+          3.9
+          3.10
+          3.11
+          3.12
+          3.13
+
+    - run: test -x /usr/bin/python2.7 || sudo /bin/sh -c 'apt-get -qq update && apt-get -qq install python2.7'
+
+    - run: python3 -m pip install tox~=4.4.0 virtualenv~=20.21.0
+
+    - run: python3 -m tox run
+
+    - uses: actions/upload-artifact@v4
+      if: always()
+      with:
+        name: log-${{ matrix.os }}
+        path: |
+          .tox/py*/log
+        if-no-files-found: ignore
