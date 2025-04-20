@@ -145,7 +145,8 @@ class SubTicketsModule(Component):
                 link = None
 
                 div = tag.div(class_='description')
-                if 'TICKET_CREATE' in req.perm(ticket.resource) \
+                if ticket.exists \
+                        and 'TICKET_CREATE' in req.perm(ticket.resource) \
                         and ticket['status'] != 'closed':
                     opt_inherit = self.env.config.getlist(
                         'subtickets', 'type.%(type)s.child_inherits' % ticket)
