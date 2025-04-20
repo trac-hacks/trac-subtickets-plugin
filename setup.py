@@ -66,7 +66,11 @@ setup(
     """,
     license='BSD',
 
-    classifiers=['Framework :: Trac'],
+    classifiers=[
+        'Framework :: Trac',
+        'Programming Language :: Python :: 2.7',
+        'Programming Language :: Python :: 3',
+    ],
     packages=find_packages(exclude=['*.tests*']),
     package_data={
         'tracsubtickets': [
