@@ -74,7 +74,11 @@ $(document).ready(function() {
             }
             // Add ticket ID link
             var ticketUrl = window.location.pathname.replace(/\/\d+$/, '') + '/' + subticket.id;
-            idCell.append($('<a>').attr('href', ticketUrl).text('#' + subticket.id));
+            var ticketLink = $('<a>').attr('href', ticketUrl).text('#' + subticket.id);
+            if (subticket.status === 'closed') {
+                ticketLink.css('text-decoration', 'line-through');
+            }
+            idCell.append(ticketLink);
             row.append(idCell);
 
             // Add other cells
