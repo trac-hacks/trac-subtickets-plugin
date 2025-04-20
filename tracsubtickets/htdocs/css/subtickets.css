@@ -57,6 +57,12 @@ h3 .addsubticket {
     margin-right: 0.2em;
 }
 
+.subtickets .indent-space {
+    display: inline-block;
+    width: 1em;
+    height: 1em;
+}
+
 .subtickets .indent-level {
     display: inline-block;
     width: 0.6em;

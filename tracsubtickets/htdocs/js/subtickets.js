@@ -67,9 +67,12 @@ $(document).ready(function() {
             // Add indentation based on level
             if (subticket.level > 0) {
                 var indent = $('<span>').addClass('indent');
-                for (var i = 0; i < subticket.level; i++) {
-                    indent.append($('<span>').addClass('indent-level'));
+                // Add spaces for all levels except the last one
+                for (var i = 0; i < subticket.level - 1; i++) {
+                    indent.append($('<span>').addClass('indent-space'));
                 }
+                // Add line character for the last level
+                indent.append($('<span>').addClass('indent-level'));
                 idCell.append(indent);
             }
             // Add ticket ID link
